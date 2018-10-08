@@ -1,0 +1,34 @@
+{
+  "name": "redux-cluster",
+  "version": "1.0.0",
+  "description": "Cluster module for redux synchronizes all redux store in cluster processes.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/siarheidudko/redux-cluster.git"
+  },
+  "keywords": [
+    "redux",
+    "cluster",
+    "ipc",
+    "process"
+  ],
+  "author": "Siarhei Dudko",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/siarheidudko/redux-cluster/issues"
+  },
+  "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
+  "dependencies": {
+    "cluster": "^0.7.7",
+    "crypto": "^1.0.1",
+    "lodash": "^4.17.11",
+    "redux": "^4.0.0"
+  },
+  "devDependencies": {
+    "colors": "^1.3.2"
+  }
+}
