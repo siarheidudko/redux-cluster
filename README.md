@@ -1,9 +1,16 @@
-﻿﻿# Redux-Cluster
+﻿﻿
+# Redux-Cluster
 Synchronize your redux storage in a cluster.
 
 - Supports native methods of redux.
 - Uses IPC only.
 - Store are isolated and identified by means of hashes.
+
+## Install
+
+```
+	npm i redux-cluster --save
+```
 
 ## Use
 
@@ -45,3 +52,7 @@ Synchronize your redux storage in a cluster.
 ```
 	Test.dispatch({type:'TASK', payload: {version:'1111111'}})
 ```
+
+## LICENSE
+
+MIT
