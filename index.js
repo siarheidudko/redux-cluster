@@ -37,10 +37,13 @@ function ReduxCluster(_reducer){
 	var hash = hasher(_reducer.toString());
 	if(Cluster.isMaster){
 		Object.assign(self, Redux.createStore(_reducer));
-		self.subscribe(function(){
+		function SendToAll(){
 			for (const id in Cluster.workers) {
 				Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:hash, _state:self.getState()}); 
 			}
+		}
+		self.subscribe(function(){
+			SendToAll();
 		});
 		Cluster.on('message', (worker, message, handle) => {
 			if (arguments.length === 2) {
@@ -52,7 +55,9 @@ function ReduxCluster(_reducer){
 				if(message._action.type === 'REDUX_CLUSTER_SYNC')
 					throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
 				self.dispatch(message._action);
-			}
+			} else if((message._msg === 'REDUX_CLUSTER_START') && (message._hash === hash)){
+				SendToAll();
+			};
 		});
 	} else {
 		Object.assign(self, Redux.createStore(editWorkerStorage));
@@ -65,6 +70,7 @@ function ReduxCluster(_reducer){
 				self.dispatchNEW({type:"REDUX_CLUSTER_SYNC", _hash:hash, payload:data._state});
 			}
 		});
+		process.send({_msg:'REDUX_CLUSTER_START', _hash:hash});
 	}
 }
 
