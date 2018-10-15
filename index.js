@@ -56,7 +56,11 @@ function ReduxCluster(_reducer){
 					throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
 				self.dispatch(message._action);
 			} else if((message._msg === 'REDUX_CLUSTER_START') && (message._hash === hash)){
-				SendToAll();
+				if(worker){
+					Cluster.workers[worker.id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:hash, _state:self.getState()});
+				} else {
+					SendToAll();
+				}
 			};
 		});
 	} else {
