@@ -1,25 +1,27 @@
 ﻿﻿
-# Redux-Cluster
-Synchronize your redux storage in a cluster.
+# Redux-Cluster  
+Synchronize your redux storage in a cluster.  
+  
+- Supports native methods of redux.  
+- Uses IPC only.  
+- Store are isolated and identified by means of hashes.  
 
-- Supports native methods of redux.
-- Uses IPC only.
-- Store are isolated and identified by means of hashes.
-
-## Install
+## Install  
 
 ```
 	npm i redux-cluster --save
 ```
 
-## Use
+## Use  
 
-#### connection library
+### Stability: 2 - Stable  
+
+#### connection library  
 ```
 	var ReduxCluster = require('redux-cluster');
 ```
 
-#### create store
+#### create store  
 ```
 	var Test = ReduxCluster.createStore(editProcessStorage);
 	
@@ -36,7 +38,7 @@ Synchronize your redux storage in a cluster.
 	}
 ```
 
-#### subscribe updates
+#### subscribe updates  
 ```
 	Test.subscribe(function(){
 		if(Cluster.isMaster){
@@ -48,11 +50,39 @@ Synchronize your redux storage in a cluster.
 	});
 ```
 
-#### dispatch event
+#### dispatch event  
 ```
 	Test.dispatch({type:'TASK', payload: {version:'1111111'}})
 ```
 
-## LICENSE
+### Stability: 1 - Experimental  
 
-MIT
+#### create socket server  
+```
+Test.createServer(<Options>);
+```
+   
+Options <Object> Required:  
+
+- path <String> - name of the file socket (linux) or the name of the named pipe (windows), if use as IPC  
+- host <String> - hostname or ip-address (optional, default 0.0.0.0), if use as TCP  
+- port <Integer> - port (optional, default 10001), if use as TCP  
+- logins <Object> - login - password pairs as `{login1:password1, login2:password2}`
+
+#### create socket server  
+```
+Test.createClient(<Options>);
+```
+   
+Options <Object> Required:  
+
+- path <String> - name of the file socket (linux) or the name of the named pipe (windows), if use as IPC  
+- host <String> - hostname or ip-address (optional, default 0.0.0.0), if use as TCP  
+- port <Integer> - port (optional, default 10001), if use as TCP  
+- login <String> - login in socket
+- password <String> - password in socket
+
+
+## LICENSE  
+  
+MIT  

@@ -17,7 +17,7 @@ var ReduxCluster = require('./index.js'),
 var Test = ReduxCluster.createStore(editProcessStorage);
 var Test2 = ReduxCluster.createStore(editProcessStorage2);
 
-var testTwo =  false;
+var testTwo =  true;
 	
 function editProcessStorage(state = {version:''}, action){ 
 	try {
@@ -72,6 +72,7 @@ if(testTwo)
 	});
 
 if(Cluster.isMaster){
+	Test.createServer({path: "./mysock.socks", logins:{test:'12345'}});
 	for(var i=0; i < 3; i++){
 		setTimeout(function(){Cluster.fork();}, i*20000)
 	}
