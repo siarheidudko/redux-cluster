@@ -79,7 +79,7 @@ if(Cluster.isMaster){
 	Test.dispatch({type:'TASK', payload: {version:'OneMasterTest0'}});
 	if(testTwo){
 		Test2.dispatch({type:'TASK', payload: {version:'TwoMasterTest0'}});
-		Test2.createServer({host: "10.0.8.1", port: 8888, logins:{test2:'123456'}});
+		Test2.createServer({host: "0.0.0.0", port: 8888, logins:{test2:'123456'}});
 	}
 	var i = 0;
 	setInterval(function(){
