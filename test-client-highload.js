@@ -2,7 +2,7 @@
  *	Redux-Cluster Test
  *	(c) 2018 by Siarhei Dudko.
  *
- *	standart test, include test Socket IPC and TCP client 
+ *	standart test, include test Socket IPC and TCP (remote) client 
  *	LICENSE MIT
  */
 
@@ -22,7 +22,7 @@ var testTwo =  true;
 if(Cluster.isMaster){
 	Test.createClient({path: "./mysock.socks", login:"test1", password:'12345'});
 	if(testTwo)
-		Test2.createClient({host: "0.0.0.0", port: 8888, login:"test2", password:'123456'});
+		Test2.createClient({host: "10.0.8.1", port: 8888, login:"test2", password:'123456'});
 }
 	
 function editProcessStorage(state = {version:''}, action){ 
@@ -78,8 +78,8 @@ if(testTwo)
 	});
 
 if(Cluster.isMaster){
-	for(var i=0; i < 3; i++){
-		setTimeout(function(){Cluster.fork();}, i*20000)
+	for(var i=0; i < 5; i++){
+		Cluster.fork();
 	}
 	Test.dispatch({type:'TASK', payload: {version:'OneRemoteMasterTest0'}});
 	if(testTwo){
@@ -91,7 +91,7 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoRemoteMasterTest'+i}});
 		i++;
-	}, 31000);
+	}, 700);
 } else {
 	var i = 0;
 	setInterval(function(){
@@ -99,5 +99,5 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoRemoteWorkerTest'+i}});
 		i++;
-	}, (40000 + (Cluster.worker.id*1000)), i);
+	}, (Cluster.worker.id*500), i);
 }

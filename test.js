@@ -1,8 +1,8 @@
 /**
- *	Redux-Cluster
+ *	Redux-Cluster Test
  *	(c) 2018 by Siarhei Dudko.
  *
- *	Cluster module for redux synchronizes all redux store in cluster processes.
+ *	standart test (cluster IPC channel)
  *	LICENSE MIT
  */
 
@@ -35,12 +35,12 @@ function editProcessStorage(state = {version:''}, action){
 	var state_new = Lodash.clone(state);
 	return state_new;
 }
-function editProcessStorage2(state = {test:''}, action){ 
+function editProcessStorage2(state = {version:''}, action){ 
 	try {
 		switch (action.type){
 			case 'TASK':
 				var state_new = Lodash.clone(state);
-				state_new.test = action.payload.test;
+				state_new.version = action.payload.version;
 				return state_new;
 				break;
 			default:
@@ -58,7 +58,7 @@ Test.subscribe(function(){
 	} else {
 		var name = Cluster.worker.id;
 	}
-	console.log(Colors.gray('Store One | '+ name + ' | ' + JSON.stringify(Test.getState())));
+	console.log(Colors.gray(name + ' | ' + JSON.stringify(Test.getState())));
 });
 
 if(testTwo)
@@ -68,30 +68,30 @@ if(testTwo)
 		} else {
 			var name = Cluster.worker.id;
 		}
-		console.log(Colors.yellow('Store Two | '+ name + ' | ' + JSON.stringify(Test2.getState())));
+		console.log(Colors.yellow(name + ' | ' + JSON.stringify(Test2.getState())));
 	});
 
 if(Cluster.isMaster){
-	Test.createServer({path: "./mysock.socks", logins:{test:'12345'}});
 	for(var i=0; i < 3; i++){
 		setTimeout(function(){Cluster.fork();}, i*20000)
 	}
-	Test.dispatch({type:'TASK', payload: {version:'MasterTest0'}});
-	if(testTwo)
-		Test2.dispatch({type:'TASK', payload: {test:'Master0'}});
+	Test.dispatch({type:'TASK', payload: {version:'OneMasterTest0'}});
+	if(testTwo){
+		Test2.dispatch({type:'TASK', payload: {version:'TwoMasterTest0'}});
+	}
 	var i = 0;
 	setInterval(function(){
-		Test.dispatch({type:'TASK', payload: {version:'MasterTest'+i}});
+		Test.dispatch({type:'TASK', payload: {version:'OneMasterTest'+i}});
 		if(testTwo)
-			Test2.dispatch({type:'TASK', payload: {test:'Master'+i}});
+			Test2.dispatch({type:'TASK', payload: {version:'TwoMasterTest'+i}});
 		i++;
 	}, 5000);
 } else {
 	var i = 0;
 	setInterval(function(){
-		Test.dispatch({type:'TASK', payload: {version:'WorkerTest'+i}});
+		Test.dispatch({type:'TASK', payload: {version:'OneWorkerTest'+i}});
 		if(testTwo)
-			Test2.dispatch({type:'TASK', payload: {test:'Worker'+i}});
+			Test2.dispatch({type:'TASK', payload: {version:'TwoWorkerTest'+i}});
 		i++;
 	}, 5000, i);
 }

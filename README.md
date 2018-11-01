@@ -56,6 +56,7 @@ Synchronize your redux storage in a cluster.
 ```
 
 ### Stability: 1 - Experimental  
+In connection with the library architecture, you must use createClient immediately after creating the redux store (before using the functions subscribe, getState, dispath, etc., as they will be redefined)
 
 #### create socket server  
 ```

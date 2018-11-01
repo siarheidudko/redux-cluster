@@ -2,7 +2,8 @@
  *	Redux-Cluster
  *	(c) 2018 by Siarhei Dudko.
  *
- *	Cluster module for redux synchronizes all redux store in cluster processes.
+ *	Cluster (default IPC cluster channel) module for redux synchronizes all redux store in cluster processes (v.1.0.x).
+ *	Cluster (default IPC cluster channel) and Socket (custom IPC or TCP channel) for redux synchronizes all redux store (v.1.1.x).
  *	LICENSE MIT
  */
 
@@ -18,6 +19,7 @@ var Redux = require('redux'),
 	
 var ReduxClusterModule = {};	//модуль
 Object.assign(ReduxClusterModule, Redux);	//копирую свойства Redux
+var reducers = {}; //список редьюсеров (хэш собирается по имени редьюсера для совместимости различных ОС, т.к. hasher(<function>.toString()) для разных ос дает разные суммы)
 
 //эмулирую performance.now()
 var hrtimeproc = process.hrtime();
@@ -51,20 +53,25 @@ function editWorkerStorage(state = {}, action){ 	//редьюсер для во�
 
 function ReduxCluster(_reducer, isClient){
 	var self = this;
-	self.RCHash = hasher(_reducer.toString());	//создаю метку текущего редьюсера для каждого экземпляра
+	self.RCHash = hasher(_reducer.name);	//создаю метку текущего редьюсера для каждого экземпляра
+	if(typeof(reducers[_reducer.name]) === 'undefined'){
+		reducers[_reducer.name] = self.RCHash;
+	} else {
+		throw new Error("Please don't use a reducer with the same name!");
+	}
+	self.sendtoall = function(){	//отправка снимков во все воркеры
+		for (const id in Cluster.workers) {
+			Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()}); 
+		}
+	}
 	if(Cluster.isMaster){ //мастер
 		if(isClient){
 			Object.assign(self, Redux.createStore(editWorkerStorage));	//создаю хранилище с собственным редьюсером
 		} else{
 			Object.assign(self, Redux.createStore(_reducer));	//создаю хранилище с оригинальным редьюсером
 		}
-		function SendToAll(){	//отправка снимков во все воркеры
-			for (const id in Cluster.workers) {
-				Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()}); 
-			}
-		}
-		self.subscribe(function(){	//подписываю отправку снимков при изменении
-			SendToAll();
+		self.unsubscribe = self.subscribe(function(){	//подписываю отправку снимков при изменении
+			self.sendtoall();
 		});
 		Cluster.on('message', (worker, message, handle) => {	//получение сообщения мастером
 			if (arguments.length === 2) {	//поддержка старой версии (без идентификатора воркера)
@@ -83,7 +90,7 @@ function ReduxCluster(_reducer, isClient){
 						if(worker){
 							Cluster.workers[worker.id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()});	//в зависимости от наличия метки воркера, отправляю снимок ему, либо всем
 						} else {
-							SendToAll();
+							self.sendtoall();
 						}
 						break;
 				}
@@ -111,7 +118,11 @@ function createStore(_reducer){		//функция создания хранил�
 	}
 	_ReduxCluster.createClient = function(_settings){	//подключаю объект создания клиента
 		if(Cluster.isMaster){
+			_ReduxCluster.unsubscribe(); //отменяю подписку от предыдущего объекта
 			Object.assign(_ReduxCluster, Redux.createStore(editWorkerStorage));		//пересоздаю экземпляр хранилища для мастера (с собственным редьюсером)
+			_ReduxCluster.unsubscribe = _ReduxCluster.subscribe(function(){ //подписываюсь на текущий (новый) объект
+				_ReduxCluster.sendtoall();
+			});
 		}
 		return new createClient(_ReduxCluster, _settings);
 	}
@@ -262,6 +273,7 @@ function createClient(_store, _settings){	//объект создания кли
 							if(data[iter]._value === true)
 								self.client.write({_msg:'REDUX_CLUSTER_START', _hash:self.store.RCHash});	//синхронизирую хранилище
 							else{
+								console.error('ReduxCluster.createClient client error: authorization failed');
 								if(typeof(self.client.end) === 'function') { self.client.end(); }
 								setTimeout(createClient, 15000, _store, _settings);
 							}
@@ -280,25 +292,28 @@ function createClient(_store, _settings){	//объект создания кли
 //парсинг json
 function jsonParser(data){
 	var _data = data.toString();
-	var _count = {'{':0, '}':0};
 	var _objArr = [];
-	var _flag = 0;
-	for(var chr = 0; chr < _data.length; chr++){
-		switch(_data[chr]){
-			case '{':
-				_count['{']++;
-				break;
-			case '}':
-				_count['}']++;
-				break;
-		}
-		if((_count['{'] === _count['}']) && (_count['{'] !== 0)){
-			try{
-				_objArr.push(JSON.parse(_data.substr(_flag,chr+1)));
-				_flag = chr+1;
-			} catch(err){
-				console.error('ReduxCluster jsonParser error: '+err.message);
+	var _tempArr = _data.split('}{');
+	if(_tempArr.length > 1){	//исправляем json на валидный, после split (для одного элемента json не изменялся)
+		for(var i = 0; i < _tempArr.length; i++){
+			switch(i){
+				case 0:
+					_tempArr[i] = _tempArr[i]+'}';
+					break;
+				case (_tempArr.length-1):
+					_tempArr[i] = '{'+_tempArr[i];
+					break;
+				default:
+					_tempArr[i] = '{'+_tempArr[i]+'}';
+					break;
 			}
+		}
+	}
+	for(var i = 0; i < _tempArr.length; i++){
+		try{
+			_objArr.push(JSON.parse(_tempArr[i]));
+		} catch(err){
+			console.error('ReduxCluster jsonParser error: '+err.message);
 		}
 	}
 	return _objArr;
