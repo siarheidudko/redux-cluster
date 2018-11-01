@@ -10,14 +10,19 @@
 
 var ReduxCluster = require('./index.js'),
 	Cluster = require('cluster'),
-	Lodash = require('lodash'),
-	Colors = require('colors');
+	Lodash = require('lodash');
 	
 	
 var Test = ReduxCluster.createStore(editProcessStorage);
 var Test2 = ReduxCluster.createStore(editProcessStorage2);
 
 var testTwo =  true;
+
+if(Cluster.isMaster){
+	Test.createServer({path: "./mysock.socks", logins:{test1:'12345'}});
+	if(testTwo)
+		Test2.createServer({host: "0.0.0.0", port: 8888, logins:{test2:'123456'}});
+}
 	
 function editProcessStorage(state = {version:''}, action){ 
 	try {
@@ -58,7 +63,7 @@ Test.subscribe(function(){
 	} else {
 		var name = Cluster.worker.id;
 	}
-	console.log(Colors.gray(name + ' | ' + JSON.stringify(Test.getState())));
+	console.log(' S1 | ' + name + ' | ' + JSON.stringify(Test.getState()));
 });
 
 if(testTwo)
@@ -68,18 +73,16 @@ if(testTwo)
 		} else {
 			var name = Cluster.worker.id;
 		}
-		console.log(Colors.yellow(name + ' | ' + JSON.stringify(Test2.getState())));
+		console.log(' S2 | ' + name + ' | ' + JSON.stringify(Test2.getState()));
 	});
 
 if(Cluster.isMaster){
-	Test.createServer({path: "./mysock.socks", logins:{test1:'12345'}});
 	for(var i=0; i < 10; i++){
 		Cluster.fork();
 	}
 	Test.dispatch({type:'TASK', payload: {version:'OneMasterTest0'}});
 	if(testTwo){
 		Test2.dispatch({type:'TASK', payload: {version:'TwoMasterTest0'}});
-		Test2.createServer({host: "0.0.0.0", port: 8888, logins:{test2:'123456'}});
 	}
 	var i = 0;
 	setInterval(function(){

@@ -10,8 +10,7 @@
 
 var ReduxCluster = require('./index.js'),
 	Cluster = require('cluster'),
-	Lodash = require('lodash'),
-	Colors = require('colors');
+	Lodash = require('lodash');
 	
 	
 var Test = ReduxCluster.createStore(editProcessStorage);
@@ -64,7 +63,7 @@ Test.subscribe(function(){
 	} else {
 		var name = Cluster.worker.id;
 	}
-	console.log(Colors.gray(name + ' | ' + JSON.stringify(Test.getState())));
+	console.log(' S1 | ' + name + ' | ' + JSON.stringify(Test.getState()));
 });
 
 if(testTwo)
@@ -74,7 +73,7 @@ if(testTwo)
 		} else {
 			var name = Cluster.worker.id;
 		}
-		console.log(Colors.yellow(name + ' | ' + JSON.stringify(Test2.getState())));
+		console.log(' S2 | ' + name + ' | ' + JSON.stringify(Test2.getState()));
 	});
 
 if(Cluster.isMaster){

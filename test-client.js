@@ -2,7 +2,7 @@
  *	Redux-Cluster Test
  *	(c) 2018 by Siarhei Dudko.
  *
- *	standart test, include test Socket IPC and TCP client 
+ *	standart test, include test Socket IPC and TCP (remote) client 
  *	LICENSE MIT
  */
 
@@ -10,19 +10,18 @@
 
 var ReduxCluster = require('./index.js'),
 	Cluster = require('cluster'),
-	Lodash = require('lodash'),
-	Colors = require('colors');
+	Lodash = require('lodash');
 	
 	
 var Test = ReduxCluster.createStore(editProcessStorage);
 var Test2 = ReduxCluster.createStore(editProcessStorage2);
 
-var testTwo =  true;
+var testTwo =  false;
 
 if(Cluster.isMaster){
 	Test.createClient({path: "./mysock.socks", login:"test1", password:'12345'});
 	if(testTwo)
-		Test2.createClient({host: "0.0.0.0", port: 8888, login:"test2", password:'123456'});
+		Test2.createClient({host: "localhost", port: 8888, login:"test2", password:'123456'});
 }
 	
 function editProcessStorage(state = {version:''}, action){ 
@@ -64,7 +63,7 @@ Test.subscribe(function(){
 	} else {
 		var name = Cluster.worker.id;
 	}
-	console.log(Colors.gray(name + ' | ' + JSON.stringify(Test.getState())));
+	console.log(' S1 | ' + name + ' | ' + JSON.stringify(Test.getState()));
 });
 
 if(testTwo)
@@ -74,12 +73,12 @@ if(testTwo)
 		} else {
 			var name = Cluster.worker.id;
 		}
-		console.log(Colors.yellow(name + ' | ' + JSON.stringify(Test2.getState())));
+		console.log(' S2 | ' + name + ' | ' + JSON.stringify(Test2.getState()));
 	});
 
 if(Cluster.isMaster){
-	for(var i=0; i < 3; i++){
-		setTimeout(function(){Cluster.fork();}, i*20000)
+	for(var i=0; i < 2; i++){
+		setTimeout(function(){Cluster.fork();}, i*10000);
 	}
 	Test.dispatch({type:'TASK', payload: {version:'OneRemoteMasterTest0'}});
 	if(testTwo){
@@ -91,7 +90,7 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoRemoteMasterTest'+i}});
 		i++;
-	}, 31000);
+	}, 1700);
 } else {
 	var i = 0;
 	setInterval(function(){
@@ -99,5 +98,5 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoRemoteWorkerTest'+i}});
 		i++;
-	}, (40000 + (Cluster.worker.id*1000)), i);
+	}, 10000+(Cluster.worker.id*1500), i);
 }

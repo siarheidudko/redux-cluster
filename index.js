@@ -172,30 +172,33 @@ function createServer(_store, _settings){	//объект создания сер
 				if(data[iter]._hash === self.store.RCHash){	//проверяю что сообщение привязано к текущему хранилищу
 					switch(data[iter]._msg){
 						case 'REDUX_CLUSTER_MSGTOMASTER': 	//получаю диспатчер от клиента
-							if(socket.uid && self.sockets[socket.uid]){
+							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
 								if(data[iter]._action.type === 'REDUX_CLUSTER_SYNC')
 									throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
 								self.store.dispatch(data[iter]._action);
 							}
 							break;
 						case 'REDUX_CLUSTER_START':	//получаю метку, что клиент запущен
-							if(socket.uid && self.sockets[socket.uid])
+							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
 								self.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _state:self.store.getState()});
+							}
 							break;
 						case 'REDUX_CLUSTER_SOCKET_AUTH':
-							if((typeof(data[iter]._login) !== 'undefined') && 
-							   (typeof(data[iter]._password) !== 'undefined') &&
-							   (typeof(self.database[data[iter]._login]) !== 'undefined') && 
-							   (self.database[data[iter]._login] === data[iter]._password)){
+							if( (typeof(data[iter]._login) !== 'undefined') && 
+							    (typeof(data[iter]._password) !== 'undefined') &&
+							    (typeof(self.database[data[iter]._login]) !== 'undefined') && 
+							    (self.database[data[iter]._login] === data[iter]._password)){
 								   self.sockets[socket.uid] = socket;
 								   socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:true});
-							   } else {
+							    } else {
 									socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:false});
-									if(typeof(socket.end) === 'function')
+									if(typeof(socket.end) === 'function'){
 										socket.end();
-									if(socket.uid && self.sockets[socket.uid])
-										delete self.sockets[socket.uid]
-							   }
+									}
+									if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+										delete self.sockets[socket.uid];
+									}
+							    }
 							break;
 					}
 				}
@@ -203,10 +206,12 @@ function createServer(_store, _settings){	//объект создания сер
 		});
 		socket.on('error', function(err){ //обработка ошибок сокета
 			console.error('ReduxCluster.createServer client error: '+err.message);
-			if(typeof(socket.end) === 'function')
+			if(typeof(socket.end) === 'function'){
 				socket.end();
-			if(socket.uid && self.sockets[socket.uid])
+			}
+			if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
 				delete self.sockets[socket.uid];
+			}
 		});
 	}).on('error', function(err){ //обработка ошибок сервера
 		console.error('ReduxCluster.createServer socket error: '+err.message);
@@ -244,7 +249,8 @@ function createClient(_store, _settings){	//объект создания кли
 		if(typeof(_settings.password) === 'string')
 			self.password = hasher("REDUX_CLUSTER"+_settings.password);
 	}
-	self.client = Net.createConnection(self.listen, () => {
+	self.client = new Net.createConnection(self.listen);
+	self.client.on('connect', function(){
 		self.client.writeNEW = self.client.write;	//переопределяю write (объектный режим)
 		self.client.write = function(_data){
 			try {
@@ -256,12 +262,17 @@ function createClient(_store, _settings){	//объект создания кли
 		}
 		if(typeof(self.store.dispatchNEW) !== 'function'){	//переопределяю dispatch для мастера
 			self.store.dispatchNEW = self.store.dispatch;
-			self.store.dispatch = function(_data){
-				self.client.write({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:self.store.RCHash, _action:_data});
-			}
+		}
+		self.store.dispatch = function(_data){
+			self.client.write({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:self.store.RCHash, _action:_data});
 		}
 		self.client.write({_msg:'REDUX_CLUSTER_SOCKET_AUTH', _hash:self.store.RCHash, _login:self.login, _password:self.password});	//авторизация в сокете
-		self.client.on('data', (buffer) => {	//при получении сообщения обновляю redux
+	}).on('close', function(){
+		setTimeout(createClient, 250, _store, _settings);
+	}).on('error', function(err){ //обработка ошибок клиента
+		console.error('ReduxCluster.createClient client error: '+err.message);
+	}).on('data', (buffer) => {	//при получении сообщения обновляю redux
+		if(!self.client.destroyed){
 			var data = jsonParser(buffer);
 			for(var iter = 0; iter < data.length; iter++){
 				if(data[iter]._hash === self.store.RCHash){
@@ -270,22 +281,16 @@ function createClient(_store, _settings){	//объект создания кли
 							self.store.dispatchNEW({type:"REDUX_CLUSTER_SYNC", _hash:self.store.RCHash, payload:data[iter]._state});
 							break;
 						case 'REDUX_CLUSTER_SOCKET_AUTHSTATE':
-							if(data[iter]._value === true)
+							if(data[iter]._value === true){
 								self.client.write({_msg:'REDUX_CLUSTER_START', _hash:self.store.RCHash});	//синхронизирую хранилище
-							else{
-								console.error('ReduxCluster.createClient client error: authorization failed');
-								if(typeof(self.client.end) === 'function') { self.client.end(); }
-								setTimeout(createClient, 15000, _store, _settings);
+							}else{
+								self.client.destroy('authorization failed');
 							}
 							break;
 					}
 				}
 			}
-		});
-	}).on('error', function(err){ //обработка ошибок клиента
-		console.error('ReduxCluster.createClient client error: '+err.message);
-		if(typeof(self.client.end) === 'function'){ self.client.end(); }
-		setTimeout(createClient, 15000, _store, _settings);
+		}
 	});
 }
 
