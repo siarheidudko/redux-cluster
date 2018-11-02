@@ -51,25 +51,31 @@ function editWorkerStorage(state = {}, action){ 	//редьюсер для во�
 	return state_new;
 }
 
-function ReduxCluster(_reducer, isClient){
+function ReduxCluster(_reducer){
 	var self = this;
+	self.connected = false;
 	self.RCHash = hasher(_reducer.name);	//создаю метку текущего редьюсера для каждого экземпляра
 	if(typeof(reducers[_reducer.name]) === 'undefined'){
 		reducers[_reducer.name] = self.RCHash;
 	} else {
 		throw new Error("Please don't use a reducer with the same name!");
 	}
-	self.sendtoall = function(){	//отправка снимков во все воркеры
-		for (const id in Cluster.workers) {
-			Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()}); 
+	self.sendtoall = function(_message){	//отправка снимков во все воркеры
+		if(Cluster.isMaster){
+			if(typeof(_message) ==='object'){
+				for (const id in Cluster.workers) {
+					Cluster.workers[id].send(_message); 
+				}
+			} else{
+				for (const id in Cluster.workers) {
+					Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()}); 
+				}
+			}
 		}
 	}
 	if(Cluster.isMaster){ //мастер
-		if(isClient){
-			Object.assign(self, Redux.createStore(editWorkerStorage));	//создаю хранилище с собственным редьюсером
-		} else{
-			Object.assign(self, Redux.createStore(_reducer));	//создаю хранилище с оригинальным редьюсером
-		}
+		self.role = "master";
+		Object.assign(self, Redux.createStore(_reducer));	//создаю хранилище с оригинальным редьюсером
 		self.unsubscribe = self.subscribe(function(){	//подписываю отправку снимков при изменении
 			self.sendtoall();
 		});
@@ -96,17 +102,27 @@ function ReduxCluster(_reducer, isClient){
 				}
 			}
 		});
+		self.connected = true;
 	} else {	//воркер
+		self.role = "worker";
 		Object.assign(self, Redux.createStore(editWorkerStorage));	//создаю хранилище с собственным редьюсером
 		self.dispatchNEW = self.dispatch;	//переопределяю диспатчер
 		self.dispatch = function(_data){ 
 			process.send({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:self.RCHash, _action:_data});	//вместо оригинального диспатчера подкладываю IPC
 		};
-		process.on("message", function(data){	//получение снимка от мастера
-			if((data._msg === "REDUX_CLUSTER_MSGTOWORKER") && (data._hash === self.RCHash)){
-				self.dispatchNEW({type:"REDUX_CLUSTER_SYNC", _hash:self.RCHash, payload:data._state});	//запускаю диспатчер Redux
+		process.on("message", function(data){	//получение сообщения воркером
+			if((data._hash === self.RCHash) && (self.role !== 'client')){	//если роль изменена на client больше не слушаем default IPC
+				switch(data._msg){
+					case 'REDUX_CLUSTER_MSGTOWORKER':	//получение снимка от мастера
+						self.dispatchNEW({type:"REDUX_CLUSTER_SYNC", _hash:self.RCHash, payload:data._state});	//запускаю диспатчер Redux
+						break;
+					case 'REDUX_CLUSTER_CONNSTATUS':
+						self.connected = data._connected;
+						break;
+				}
 			}
 		});
+		self.connected = true;
 		process.send({_msg:'REDUX_CLUSTER_START', _hash:self.RCHash});	//запрашиваю у мастера снимок хранилища
 	}
 }
@@ -114,10 +130,15 @@ function ReduxCluster(_reducer, isClient){
 function createStore(_reducer){		//функция создания хранилища
 	var _ReduxCluster = new ReduxCluster(_reducer);		//создаю экземпляр хранилища
 	_ReduxCluster.createServer = function(_settings){	//подключаю объект создания сервера
+		_ReduxCluster.role = "server";
+		_ReduxCluster.connected = false;
 		return new createServer(_ReduxCluster, _settings);
 	}
 	_ReduxCluster.createClient = function(_settings){	//подключаю объект создания клиента
+		_ReduxCluster.role = "client";
+		_ReduxCluster.connected = false;
 		if(Cluster.isMaster){
+			_ReduxCluster.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_ReduxCluster.RCHash, _connected:false});
 			_ReduxCluster.unsubscribe(); //отменяю подписку от предыдущего объекта
 			Object.assign(_ReduxCluster, Redux.createStore(editWorkerStorage));		//пересоздаю экземпляр хранилища для мастера (с собственным редьюсером)
 			_ReduxCluster.unsubscribe = _ReduxCluster.subscribe(function(){ //подписываюсь на текущий (новый) объект
@@ -154,6 +175,11 @@ function createServer(_store, _settings){	//объект создания сер
 		if(typeof(_settings.logins) === 'object')
 			for(const login in _settings.logins){ self.database[hasher("REDUX_CLUSTER"+login)] = hasher("REDUX_CLUSTER"+_settings.logins[login]); }
 	}
+	self.unsubscribe = self.store.subscribe(function(){	//подписываю сокет на изменения Redux
+		for(const uid in self.sockets){
+			self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _state:self.store.getState()});
+		}
+	});
 	self.server = Net.createServer((socket) => {
 		var _uid = generateUID();
 		socket.uid = _uid;
@@ -213,13 +239,18 @@ function createServer(_store, _settings){	//объект создания сер
 				delete self.sockets[socket.uid];
 			}
 		});
+	}).on('listening', function(){	//сервер слушает
+		_store.connected = true;
+		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:true});
+	}).on('close', function(){	//все коннекты уничтожены
+		_store.connected = false;
+		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:false});
+		self.unsubscribe();
+		setTimeout(createServer, 10000, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок сервера
 		console.error('ReduxCluster.createServer socket error: '+err.message);
-	});
-	self.store.subscribe(function(){	//подписываю сокет на изменения Redux
-		for(const uid in self.sockets){
-			self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _state:self.store.getState()});
-		}
+		if(typeof(self.server.close) === 'function')
+			self.server.close()
 	});
 	self.server.listen(self.listen);
 }
@@ -251,6 +282,8 @@ function createClient(_store, _settings){	//объект создания кли
 	}
 	self.client = new Net.createConnection(self.listen);
 	self.client.on('connect', function(){
+		_store.connected = true;
+		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:true});
 		self.client.writeNEW = self.client.write;	//переопределяю write (объектный режим)
 		self.client.write = function(_data){
 			try {
@@ -268,6 +301,8 @@ function createClient(_store, _settings){	//объект создания кли
 		}
 		self.client.write({_msg:'REDUX_CLUSTER_SOCKET_AUTH', _hash:self.store.RCHash, _login:self.login, _password:self.password});	//авторизация в сокете
 	}).on('close', function(){
+		_store.connected = false;
+		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:false});
 		setTimeout(createClient, 250, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок клиента
 		console.error('ReduxCluster.createClient client error: '+err.message);

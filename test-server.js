@@ -77,7 +77,7 @@ if(testTwo)
 	});
 
 if(Cluster.isMaster){
-	for(var i=0; i < 5; i++){
+	for(var i=0; i < 1; i++){
 		setTimeout(function(){Cluster.fork();}, i*10000);
 	}
 	Test.dispatch({type:'TASK', payload: {version:'OneMasterTest0'}});
@@ -90,7 +90,7 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoMasterTest'+i}});
 		i++;
-	}, 1900);
+	}, 19000);
 } else {
 	var i = 0;
 	setInterval(function(){
@@ -98,5 +98,5 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoWorkerTest'+i}});
 		i++;
-	}, (Cluster.worker.id*3600), i);
+	}, 31000+(Cluster.worker.id*3600), i);
 }

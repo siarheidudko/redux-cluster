@@ -90,7 +90,7 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoRemoteMasterTest'+i}});
 		i++;
-	}, 1700);
+	}, 11000);
 } else {
 	var i = 0;
 	setInterval(function(){
@@ -98,5 +98,5 @@ if(Cluster.isMaster){
 		if(testTwo)
 			Test2.dispatch({type:'TASK', payload: {version:'TwoRemoteWorkerTest'+i}});
 		i++;
-	}, 10000+(Cluster.worker.id*1500), i);
+	}, 22000+(Cluster.worker.id*1500), i);
 }
