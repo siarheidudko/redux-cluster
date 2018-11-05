@@ -19,7 +19,7 @@ var Test2 = ReduxCluster.createStore(editProcessStorage2);
 var testTwo =  false;
 
 if(Cluster.isMaster){
-	Test.createClient({path: "./mysock.socks", login:"test1", password:'12345'});
+	Test.createClient({path: "./mysock.sock", login:"test1", password:'12345'});
 	if(testTwo)
 		Test2.createClient({host: "localhost", port: 8888, login:"test2", password:'123456'});
 }
