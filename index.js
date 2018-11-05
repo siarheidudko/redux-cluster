@@ -40,16 +40,6 @@ function hasher(data){	//хэширование редьюсера
 	} else 
 		return;
 }
-	
-function editWorkerStorage(state = {}, action){ 	//редьюсер для воркеров
-	if (action.type === 'REDUX_CLUSTER_SYNC'){
-		var state_new = Lodash.clone(action.payload);
-		return state_new;
-	} else {
-		var state_new = Lodash.clone(state);
-	}
-	return state_new;
-}
 
 function ReduxCluster(_reducer){
 	var self = this;
@@ -68,14 +58,33 @@ function ReduxCluster(_reducer){
 				}
 			} else{
 				for (const id in Cluster.workers) {
-					Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()}); 
+					Cluster.workers[id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.getState()}}); 
 				}
 			}
 		}
 	}
+	self.altReducer = _reducer;	//оригинальный редьюсер
+	try{
+		var _d = self.altReducer();	//получаю значение state при старте
+		if(typeof(_d) === 'object'){
+			self.defaulstate = _d;
+		} else {
+			throw new Error('The returned value is not an object.');
+		}
+	} catch(e){
+		self.defaulstate = {};
+	};
+	self.newReducer = function(state=self.defaulstate, action){	//собственный редьюсер
+		if (action.type === 'REDUX_CLUSTER_SYNC'){
+			var state_new = Lodash.clone(action.payload);
+			return state_new;
+		} else { 
+			return self.altReducer(state, action);
+		}
+	}
 	if(Cluster.isMaster){ //мастер
 		self.role = "master";
-		Object.assign(self, Redux.createStore(_reducer));	//создаю хранилище с оригинальным редьюсером
+		Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с оригинальным редьюсером
 		self.unsubscribe = self.subscribe(function(){	//подписываю отправку снимков при изменении
 			self.sendtoall();
 		});
@@ -94,7 +103,7 @@ function ReduxCluster(_reducer){
 						break;
 					case 'REDUX_CLUSTER_START':	//получаю метку, что воркер запущен
 						if(worker){
-							Cluster.workers[worker.id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _state:self.getState()});	//в зависимости от наличия метки воркера, отправляю снимок ему, либо всем
+							Cluster.workers[worker.id].send({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.getState()}});	//в зависимости от наличия метки воркера, отправляю снимок ему, либо всем
 						} else {
 							self.sendtoall();
 						}
@@ -105,7 +114,7 @@ function ReduxCluster(_reducer){
 		self.connected = true;
 	} else {	//воркер
 		self.role = "worker";
-		Object.assign(self, Redux.createStore(editWorkerStorage));	//создаю хранилище с собственным редьюсером
+		Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с собственным редьюсером
 		self.dispatchNEW = self.dispatch;	//переопределяю диспатчер
 		self.dispatch = function(_data){ 
 			process.send({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:self.RCHash, _action:_data});	//вместо оригинального диспатчера подкладываю IPC
@@ -114,7 +123,7 @@ function ReduxCluster(_reducer){
 			if((data._hash === self.RCHash) && (self.role !== 'client')){	//если роль изменена на client больше не слушаем default IPC
 				switch(data._msg){
 					case 'REDUX_CLUSTER_MSGTOWORKER':	//получение снимка от мастера
-						self.dispatchNEW({type:"REDUX_CLUSTER_SYNC", _hash:self.RCHash, payload:data._state});	//запускаю диспатчер Redux
+						self.dispatchNEW(data._action);	//запускаю диспатчер Redux
 						break;
 					case 'REDUX_CLUSTER_CONNSTATUS':
 						self.connected = data._connected;
@@ -137,14 +146,6 @@ function createStore(_reducer){		//функция создания хранил�
 	_ReduxCluster.createClient = function(_settings){	//подключаю объект создания клиента
 		_ReduxCluster.role = "client";
 		_ReduxCluster.connected = false;
-		if(Cluster.isMaster){
-			_ReduxCluster.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_ReduxCluster.RCHash, _connected:false});
-			_ReduxCluster.unsubscribe(); //отменяю подписку от предыдущего объекта
-			Object.assign(_ReduxCluster, Redux.createStore(editWorkerStorage));		//пересоздаю экземпляр хранилища для мастера (с собственным редьюсером)
-			_ReduxCluster.unsubscribe = _ReduxCluster.subscribe(function(){ //подписываюсь на текущий (новый) объект
-				_ReduxCluster.sendtoall();
-			});
-		}
 		return new createClient(_ReduxCluster, _settings);
 	}
 	return _ReduxCluster;
@@ -177,7 +178,7 @@ function createServer(_store, _settings){	//объект создания сер
 	}
 	self.unsubscribe = self.store.subscribe(function(){	//подписываю сокет на изменения Redux
 		for(const uid in self.sockets){
-			self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _state:self.store.getState()});
+			self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.store.getState()}});
 		}
 	});
 	self.server = Net.createServer((socket) => {
@@ -206,7 +207,7 @@ function createServer(_store, _settings){	//объект создания сер
 							break;
 						case 'REDUX_CLUSTER_START':	//получаю метку, что клиент запущен
 							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
-								self.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _state:self.store.getState()});
+								self.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.store.getState()}});
 							}
 							break;
 						case 'REDUX_CLUSTER_SOCKET_AUTH':
@@ -313,7 +314,7 @@ function createClient(_store, _settings){	//объект создания кли
 				if(data[iter]._hash === self.store.RCHash){
 					switch(data[iter]._msg){
 						case 'REDUX_CLUSTER_MSGTOWORKER':
-							self.store.dispatchNEW({type:"REDUX_CLUSTER_SYNC", _hash:self.store.RCHash, payload:data[iter]._state});
+							self.store.dispatchNEW(data[iter]._action);
 							break;
 						case 'REDUX_CLUSTER_SOCKET_AUTHSTATE':
 							if(data[iter]._value === true){

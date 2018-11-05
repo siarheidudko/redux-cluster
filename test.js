@@ -22,7 +22,7 @@ var testTwo =  true;
 function editProcessStorage(state = {version:''}, action){ 
 	try {
 		switch (action.type){
-			case 'TASK':
+			case 'TASK': 
 				var state_new = Lodash.clone(state);
 				state_new.version = action.payload.version;
 				return state_new;
