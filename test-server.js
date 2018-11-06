@@ -18,8 +18,9 @@ var Test2 = ReduxCluster.createStore(editProcessStorage2);
 
 var testTwo =  true;
 
-if(Cluster.isMaster){
+if(!Cluster.isMaster){
 	Test.createServer({host: "0.0.0.0", port: 8888, logins:{test2:'123456'}});
+} else {
 	if(testTwo)
 		Test2.createServer({path: "./mysock.sock", logins:{test1:'12345'}});
 }
@@ -100,3 +101,10 @@ if(Cluster.isMaster){
 		i++;
 	}, 31000+(Cluster.worker.id*3600), i);
 }
+
+setInterval(function(){
+	console.log(Test.role);
+	console.log(Test2.role);
+	console.log(Test.connected);
+	console.log(Test2.connected);
+}, 100);

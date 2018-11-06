@@ -60,7 +60,7 @@ Synchronize your redux storage in a cluster.
 ```
    
 ### Stability: 1 - Experimental     
-Please familiarize yourself with the architectural schemes before use.  
+Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.
   
 #### Create socket server  
   

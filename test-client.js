@@ -16,10 +16,11 @@ var ReduxCluster = require('./index.js'),
 var Test = ReduxCluster.createStore(editProcessStorage);
 var Test2 = ReduxCluster.createStore(editProcessStorage2);
 
-var testTwo =  false;
+var testTwo =  true;
 
 if(Cluster.isMaster){
 	Test.createClient({host: "localhost", port: 8888, login:"test2", password:'123456'});
+} else {
 	if(testTwo)
 		Test2.createClient({path: "./mysock.sock", login:"test1", password:'12345'});
 }
@@ -100,3 +101,10 @@ if(Cluster.isMaster){
 		i++;
 	}, 22000+(Cluster.worker.id*1500), i);
 }
+
+setInterval(function(){
+	console.log(Test.role);
+	console.log(Test2.role);
+	console.log(Test.connected);
+	console.log(Test2.connected);
+}, 100);

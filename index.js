@@ -194,6 +194,9 @@ function ReduxCluster(_reducer){
 function createStore(_reducer){		//функция создания хранилища
 	var _ReduxCluster = new ReduxCluster(_reducer);		//создаю экземпляр хранилища
 	_ReduxCluster.createServer = function(_settings){	//подключаю объект создания сервера
+		if((!Cluster.isMaster) && (typeof(_settings.path) === 'string') && (Os.platform() === 'win32')){	//IPC в дочернем процессе кластера не работает в windows
+			throw new Error("Named channel is not supported in the child process, please use TCP-server");
+		}
 		if(_ReduxCluster.role.indexOf("server") === -1) { _ReduxCluster.role.push("server"); }
 		_ReduxCluster.connected = false;
 		return new createServer(_ReduxCluster, _settings);
