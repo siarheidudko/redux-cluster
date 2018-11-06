@@ -120,7 +120,7 @@ function ReduxCluster(_reducer){
 	}
 	self.altReducer = _reducer;	//оригинальный редьюсер
 	try{
-		var _d = self.altReducer();	//получаю значение state при старте
+		var _d = self.altReducer(undefined, {});	//получаю значение state при старте
 		if(typeof(_d) === 'object'){
 			self.defaulstate = _d;
 		} else {
