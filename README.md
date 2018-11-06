@@ -117,13 +117,10 @@ Test.connected;
 #### Connection role  
 return <String> role:  
 
-- master (if Master process in Cluster) 
-- worker (if Worker process in Cluster)  
-  
-priority role:  
-  
-- server (if use createServer(<Object>))  
-- client (if use createClient(<Object>))  
+- master (if Master process in Cluster, sends and listen action to Worker) 
+- worker (if Worker process in Cluster, processes and sends action to Master)   
+- server (if use createServer(<Object>), sends and listen action to Client)  
+- client (if use createClient(<Object>), processes and sends action to Server)  
   
 ```
 Test.role;

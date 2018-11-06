@@ -19,9 +19,9 @@ var Test2 = ReduxCluster.createStore(editProcessStorage2);
 var testTwo =  true;
 
 if(Cluster.isMaster){
-	Test.createServer({path: "./mysock.sock", logins:{test1:'12345'}});
+	Test.createServer({host: "0.0.0.0", port: 8888, logins:{test2:'123456'}});
 	if(testTwo)
-		Test2.createServer({host: "0.0.0.0", port: 8888, logins:{test2:'123456'}});
+		Test2.createServer({path: "./mysock.sock", logins:{test1:'12345'}});
 }
 	
 function editProcessStorage(state = {version:''}, action){ 
