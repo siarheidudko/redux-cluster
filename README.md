@@ -62,7 +62,7 @@ Synchronize your redux storage in a cluster.
 ### Stability: 1 - Experimental     
 Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.
   
-#### Connection mode  
+#### Synchronization mode  
 Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 action will be additionally sent a snapshot.    
   
 ```
