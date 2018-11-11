@@ -100,6 +100,7 @@ function hasher(data){	//хэширование редьюсера
 function ReduxCluster(_reducer){
 	var self = this;
 	self.role = [];
+	self.mode = "snapshot";
 	self.connected = false;
 	self.RCHash = hasher(_reducer.name);	//создаю метку текущего редьюсера для каждого экземпляра
 	if(typeof(reducers[_reducer.name]) === 'undefined'){
@@ -120,6 +121,7 @@ function ReduxCluster(_reducer){
 			}
 		}
 	}
+	self.sendtoallsock = function(_message){};	//заглушка (будет переопределена в createServer)
 	self.altReducer = _reducer;	//оригинальный редьюсер
 	try{
 		var _d = self.altReducer(undefined, {});	//получаю значение state при старте
@@ -132,6 +134,22 @@ function ReduxCluster(_reducer){
 		self.defaulstate = {};
 	};
 	self.newReducer = function(state=self.defaulstate, action){	//собственный редьюсер
+		if(self.mode === "action"){	//в режиме action отправляем action в воркеры и сокеты
+			if((typeof(self.counter) === 'undefined') || (self.counter === 100))
+				self.counter = 1;
+			else
+				self.counter++;
+			if(self.counter === 100){	//каждый сотый action синхронизируем хранилище (на случай рассинхронизации)
+				if(self.role.indexOf("master") !== -1)
+					setTimeout(self.sendtoall, 100);
+				if(self.role.indexOf("server") !== -1)
+					setTimeout(self.sendtoallsock, 100);
+			}
+			if(self.role.indexOf("master") !== -1)
+				setTimeout(self.sendtoall, 1, {_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _action:action});
+			if(self.role.indexOf("server") !== -1)
+				setTimeout(self.sendtoallsock, 1, {_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _action:action});
+		}
 		if (action.type === 'REDUX_CLUSTER_SYNC'){
 			var state_new = Lodash.clone(action.payload);
 			return state_new;
@@ -142,8 +160,9 @@ function ReduxCluster(_reducer){
 	if(Cluster.isMaster){ //мастер
 		if(self.role.indexOf("master") === -1) { self.role.push("master"); }
 		Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с оригинальным редьюсером
-		self.unsubscribe = self.subscribe(function(){	//подписываю отправку снимков при изменении
-			self.sendtoall();
+		self.unsubscribe = self.subscribe(function(){	//подписываю отправку снимков при изменении только в режиме snapshot
+			if(self.mode === "snapshot")
+				self.sendtoall();
 		});
 		Cluster.on('message', (worker, message, handle) => {	//получение сообщения мастером
 			if (arguments.length === 2) {	//поддержка старой версии (без идентификатора воркера)
@@ -247,10 +266,22 @@ function createServer(_store, _settings){	//объект создания сер
 		if(typeof(_settings.logins) === 'object')
 			for(const login in _settings.logins){ self.database[hasher("REDUX_CLUSTER"+login)] = hasher("REDUX_CLUSTER"+_settings.logins[login]); }
 	}
-	self.unsubscribe = self.store.subscribe(function(){	//подписываю сокет на изменения Redux
-		for(const uid in self.sockets){
-			self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.store.getState()}});
+	self.sendtoall = function(_message){
+		if(typeof(_message) === 'object'){
+			for(const uid in self.sockets){
+				self.sockets[uid].write(_message);
+			}
+		} else {
+			for(const uid in self.sockets){
+				self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.store.getState()}});
+			}
 		}
+	}
+	if(self.store.mode === "action")	//переопределяю функцию отправки в сокеты (вызывается редьюсером первичного мастера)
+		self.store.sendtoallsock = self.sendtoall;
+	self.unsubscribe = self.store.subscribe(function(){	//подписываю сокет на изменения Redux только в режиме snapshot
+		if(self.store.mode === "snapshot")
+			self.sendtoall();
 	});
 	self.server = Net.createServer((socket) => {
 		var _i2bTest = replacer(socket.remoteAddress, true);
