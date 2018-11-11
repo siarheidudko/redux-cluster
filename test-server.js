@@ -101,10 +101,3 @@ if(Cluster.isMaster){
 		i++;
 	}, 31000+(Cluster.worker.id*3600), i);
 }
-
-setInterval(function(){
-	console.log(Test.role);
-	console.log(Test2.role);
-	console.log(Test.connected);
-	console.log(Test2.connected);
-}, 100);

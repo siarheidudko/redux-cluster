@@ -15,7 +15,9 @@ var Redux = require('redux'),
 	Crypto = require('crypto'),
 	Net = require('net'),
 	Path = require('path'),
-	Os = require('os');
+	Os = require('os'),
+	Jsonstream = require('JSONStream'),
+	Eventstream = require('event-stream');
 	
 var ReduxClusterModule = {};	//модуль
 Object.assign(ReduxClusterModule, Redux);	//копирую свойства Redux
@@ -273,53 +275,59 @@ function createServer(_store, _settings){	//объект создания сер
 			}
 		});
 		if((typeof(_i2bTest) === 'undefined') || (typeof(self.ip2ban[_i2bTest]) === 'undefined') || ((typeof(self.ip2ban[_i2bTest]) === 'object') && ((self.ip2ban[_i2bTest].count < 5) || ((self.ip2ban[_i2bTest].time+self.ip2banTimeout) < Date.now())))){
-			socket.on('data', (buffer) => {	//получение сообщений в сокет
-				var data = jsonParser(buffer);
-				for(var iter = 0; iter < data.length; iter++){
-					if(data[iter]._hash === self.store.RCHash){	//проверяю что сообщение привязано к текущему хранилищу
-						switch(data[iter]._msg){
-							case 'REDUX_CLUSTER_MSGTOMASTER': 	//получаю диспатчер от клиента
-								if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
-									if(data[iter]._action.type === 'REDUX_CLUSTER_SYNC')
-										throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
-									self.store.dispatch(data[iter]._action);
-								}
-								break;
-							case 'REDUX_CLUSTER_START':	//получаю метку, что клиент запущен
-								if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
-									self.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.store.getState()}});
-								}
-								break;
-							case 'REDUX_CLUSTER_SOCKET_AUTH':
-								if( (typeof(data[iter]._login) !== 'undefined') && 
-									(typeof(data[iter]._password) !== 'undefined') &&
-									(typeof(self.database[data[iter]._login]) !== 'undefined') && 
-									(self.database[data[iter]._login] === data[iter]._password)){
-									   self.sockets[socket.uid] = socket;
-									   if((typeof(_i2bTest) === 'string') && (typeof(self.ip2ban[_i2bTest]) === 'object')) { delete self.ip2ban[_i2bTest]; } //если логин присутствует в таблице забаненных удаляю
-									   socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:true});
-									} else {
-										if(typeof(_i2bTest) === 'string') { 
-											var _tempCount = 0;
-											if(typeof(self.ip2ban[_i2bTest]) === 'object'){ 
-												_tempCount = self.ip2ban[_i2bTest].count; 
-												if(_tempCount >= 5) { _tempCount = 0; } //по таймауту сбрасываю счетчик попыток
-											}
-											self.ip2ban[_i2bTest] = {time: Date.now(), count:_tempCount+1}; 
+			self.parser = Jsonstream.parse();
+			self.event = Eventstream.map(function (data, next1) {
+				if(data._hash === self.store.RCHash){	//проверяю что сообщение привязано к текущему хранилищу
+					switch(data._msg){
+						case 'REDUX_CLUSTER_MSGTOMASTER': 	//получаю диспатчер от клиента
+							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+								if(data._action.type === 'REDUX_CLUSTER_SYNC')
+									throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
+								self.store.dispatch(data._action);
+							}
+							break;
+						case 'REDUX_CLUSTER_START':	//получаю метку, что клиент запущен
+							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+								self.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:self.store.getState()}});
+							}
+							break;
+						case 'REDUX_CLUSTER_SOCKET_AUTH':
+							if( (typeof(data._login) !== 'undefined') && 
+								(typeof(data._password) !== 'undefined') &&
+								(typeof(self.database[data._login]) !== 'undefined') && 
+								(self.database[data._login] === data._password)){
+								   self.sockets[socket.uid] = socket;
+								   if((typeof(_i2bTest) === 'string') && (typeof(self.ip2ban[_i2bTest]) === 'object')) { delete self.ip2ban[_i2bTest]; } //если логин присутствует в таблице забаненных удаляю
+								   socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:true});
+								} else {
+									if(typeof(_i2bTest) === 'string') { 
+										var _tempCount = 0;
+										if(typeof(self.ip2ban[_i2bTest]) === 'object'){ 
+											_tempCount = self.ip2ban[_i2bTest].count; 
+											if(_tempCount >= 5) { _tempCount = 0; } //по таймауту сбрасываю счетчик попыток
 										}
-										socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:false});
-										if(typeof(socket.end) === 'function'){
-											socket.end();
-										}
-										if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
-											delete self.sockets[socket.uid];
-										}
+										self.ip2ban[_i2bTest] = {time: Date.now(), count:_tempCount+1}; 
 									}
-								break;
-						}
+									socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:false});
+									if(typeof(socket.end) === 'function'){
+										socket.end();
+									}
+									if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+										delete self.sockets[socket.uid];
+									}
+								}
+							break;
 					}
 				}
+				next1();
 			});
+			self.parser.on('error',function(err){
+				LOGGER.warn('ReduxCluster.createServer parser error: '+err);
+			});
+			self.event.on('error',function(err){
+				LOGGER.warn('ReduxCluster.createServer parser error: '+err);
+			});
+			socket.pipe(self.parser).pipe(self.event);
 		} else {
 			socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:false, _banned: true});
 			if(typeof(socket.end) === 'function'){
@@ -372,6 +380,35 @@ function createClient(_store, _settings){	//объект создания кли
 			self.password = hasher("REDUX_CLUSTER"+_settings.password);
 	}
 	self.client = new Net.createConnection(self.listen);
+	self.parser = Jsonstream.parse();
+	self.event = Eventstream.map(function (data, next1) {
+		if(!self.client.destroyed){
+			if(data._hash === self.store.RCHash){
+				switch(data._msg){
+					case 'REDUX_CLUSTER_MSGTOWORKER':
+						self.store.dispatchNEW(data._action);
+						break;
+					case 'REDUX_CLUSTER_SOCKET_AUTHSTATE':
+						if(data._value === true){
+							self.client.write({_msg:'REDUX_CLUSTER_START', _hash:self.store.RCHash});	//синхронизирую хранилище
+						}else{
+							if(data._banned)
+								self.client.destroy(new Error('your ip is locked for 3 hours'));
+							else
+								self.client.destroy(new Error('authorization failed'));
+						}
+						break;
+				}
+			}
+		}
+		next1();
+	});
+	self.parser.on('error',function(err){
+		LOGGER.warn('ReduxCluster.createClient parser error: '+err);
+	});
+	self.event.on('error',function(err){
+		LOGGER.warn('ReduxCluster.createClient parser error: '+err);
+	});
 	self.client.on('connect', function(){
 		_store.connected = true;
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:true});
@@ -397,60 +434,7 @@ function createClient(_store, _settings){	//объект создания кли
 		setTimeout(createClient, 250, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок клиента
 		console.error('ReduxCluster.createClient client error: '+err.message);
-	}).on('data', (buffer) => {	//при получении сообщения обновляю redux
-		if(!self.client.destroyed){
-			var data = jsonParser(buffer);
-			for(var iter = 0; iter < data.length; iter++){
-				if(data[iter]._hash === self.store.RCHash){
-					switch(data[iter]._msg){
-						case 'REDUX_CLUSTER_MSGTOWORKER':
-							self.store.dispatchNEW(data[iter]._action);
-							break;
-						case 'REDUX_CLUSTER_SOCKET_AUTHSTATE':
-							if(data[iter]._value === true){
-								self.client.write({_msg:'REDUX_CLUSTER_START', _hash:self.store.RCHash});	//синхронизирую хранилище
-							}else{
-								if(data[iter]._banned)
-									self.client.destroy(new Error('your ip is locked for 3 hours'));
-								else
-									self.client.destroy(new Error('authorization failed'));
-							}
-							break;
-					}
-				}
-			}
-		}
-	});
-}
-
-//парсинг json
-function jsonParser(data){
-	var _data = data.toString();
-	var _objArr = [];
-	var _tempArr = _data.split('}{');
-	if(_tempArr.length > 1){	//исправляем json на валидный, после split (для одного элемента json не изменялся)
-		for(var i = 0; i < _tempArr.length; i++){
-			switch(i){
-				case 0:
-					_tempArr[i] = _tempArr[i]+'}';
-					break;
-				case (_tempArr.length-1):
-					_tempArr[i] = '{'+_tempArr[i];
-					break;
-				default:
-					_tempArr[i] = '{'+_tempArr[i]+'}';
-					break;
-			}
-		}
-	}
-	for(var i = 0; i < _tempArr.length; i++){
-		try{
-			_objArr.push(JSON.parse(_tempArr[i]));
-		} catch(err){
-			console.error('ReduxCluster jsonParser error: '+err.message);
-		}
-	}
-	return _objArr;
+	}).pipe(self.parser).pipe(self.event);
 }
 
 //генерация uid
