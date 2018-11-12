@@ -77,7 +77,7 @@ if(testTwo)
 	});
 
 if(Cluster.isMaster){
-	for(var i=0; i < 10; i++){
+	for(var i=0; i < 5; i++){
 		Cluster.fork();
 	}
 	Test.dispatch({type:'TASK', payload: {version:'OneMasterTest0'}});

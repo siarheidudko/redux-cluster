@@ -3,7 +3,7 @@
 Synchronize your redux storage in a cluster.  
   
 - Supports native methods of redux.  
-- Uses IPC only (in Basic Scheme) or Socket only (in Cluster Scheme).  
+- Uses IPC only (in Basic Scheme) or IPC and Socket (in Cluster Scheme).  
 - Store are isolated and identified by means of hashes.  
   
 ## Install  
@@ -63,8 +63,20 @@ Synchronize your redux storage in a cluster.
 Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.
   
 #### Synchronization mode  
-Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 action will be additionally sent a snapshot.    
+This mode is enabled for the basic scheme as well.   
+Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 action will be additionally sent a snapshot.  
+The action mode on the local machine showed the store oneness per unit of time at least 75%. The test was conducted under the following conditions:  
+- Work pattern test1 `<Store 1 Process Worker1> -> <Store 1 Process Master1> -> <Store 1 Process Master2> -> <Store 1 Process Worker2> -> <Store 2 Process Worker2> -> <TCP> -> <Store 2 Process Master1> -> <Store 2 Process Worker1>` by comparing `Store 1` and `Store 2` in `Process Worker1`.  
+- Workflow test2 `<Store 1 Process Worker1> -> <Store 1 Process Master1> -> <Store 2 Process Master1> -> <Store 2 Process Worker1>` by comparing `Store 1` and `Store 2` in `Process Worker1`.  
+- `Store 1` in action mode, `Store2` in snapshot mode (otherwise it is impossible to control synchronization)  
+- `Store 1` was filled with an array of up to 500 items, `Store 2` was a snapshot of `Store 1` (see the diagram)  
+- Test1 and test2 were conducted simultaneously (AMD A4-4020 3.2Ghz, 8GB RAM).  
+- `Store 1` and `Store 2` were compared every second for test1 and every 0.5 second for test2.  
+- Testing time 8 hours.  
+- Results test1 92%, test2 75%.  
   
+Already on the basis of the fact that after 8 hours the Store images remained identical ensures that the action mode does not lead to failures. However, use it with caution.    
+   
 ```
 Test.mode = "action";
 ```  
@@ -122,12 +134,12 @@ Test.connected;
 ```
 
 #### Connection role  
-return <String> role:  
+return <Array> role:  
 
 - master (if Master process in Cluster, sends and listen action to Worker) 
 - worker (if Worker process in Cluster, processes and sends action to Master)   
-- server (if use createServer(<Object>), sends and listen action to Client)  
-- client (if use createClient(<Object>), processes and sends action to Server)  
+- server (if use `createServer(<Object>)`, sends and listen action to Client)  
+- client (if use `createClient(<Object>)`, processes and sends action to Server)  
   
 ```
 Test.role;
@@ -141,8 +153,8 @@ Test.role;
 ![BasicScheme](https://github.com/siarheidudko/redux-cluster/raw/master/img/BasicScheme.png)  
   
 #### Cluster Scheme   
-You can use createServer (<Object>) in any process in cluster (and outside cluster process).   
-Using createClient (<Object>) is logical in a Master process or a single process. In any case, if you create a createClient (<Onject>) in the Worker process, it will not work with the rest of the cluster processes, does not have access to them. So you will have to create createClient (<Onject>) in each Worker process that needs access to the Store.  
+You can use `createServer(<Object>)` in any process in cluster (and outside cluster process).   
+Using `createClient(<Object>)` is logical in a Master process or a single process. In any case, if you create a `createClient(<Onject>)` in the Worker process, it will not work with the rest of the cluster processes, does not have access to them. So you will have to create `createClient(<Onject>)` in each Worker process that needs access to the Store.  
    
 ![ClusterScheme](https://github.com/siarheidudko/redux-cluster/raw/master/img/ClusterScheme.png)  
   

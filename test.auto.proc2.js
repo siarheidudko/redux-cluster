@@ -18,6 +18,9 @@ function editProcessStorage(state = {versions:[]}, action){
 		switch (action.type){
 			case 'TASK': 
 				var state_new = Lodash.clone(state);
+				if(state_new.versions.length > 500){
+					state_new.versions.splice(0,100);
+				}
 				state_new.versions.push(action.payload.version);
 				return state_new;
 				break;
