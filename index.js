@@ -99,6 +99,7 @@ function hasher(data){	//хэширование редьюсера
 
 function ReduxCluster(_reducer){
 	var self = this;
+	self.stderr = console.error;
 	self.role = [];
 	self.mode = "snapshot";
 	self.connected = false;
@@ -292,12 +293,12 @@ function createServer(_store, _settings){	//объект создания сер
 			try{
 				return socket.writeNEW(Buffer.from(JSON.stringify(_data)));
 			} catch(err){
-				console.error('ReduxCluster.createServer write error: '+err.message);
+				self.store.stderr('ReduxCluster.createServer write error: '+err.message);
 				return;
 			}
 		}
 		socket.on('error', function(err){ //обработка ошибок сокета
-			console.error('ReduxCluster.createServer client error: '+err.message);
+			self.store.stderr('ReduxCluster.createServer client error: '+err.message);
 			if(typeof(socket.end) === 'function'){
 				socket.end();
 			}
@@ -353,10 +354,10 @@ function createServer(_store, _settings){	//объект создания сер
 				next1();
 			});
 			self.parser.on('error',function(err){
-				LOGGER.warn('ReduxCluster.createServer parser error: '+err);
+				self.store.stderr('ReduxCluster.createServer parser error: '+err);
 			});
 			self.event.on('error',function(err){
-				LOGGER.warn('ReduxCluster.createServer parser error: '+err);
+				self.store.stderr('ReduxCluster.createServer parser error: '+err);
 			});
 			socket.pipe(self.parser).pipe(self.event);
 		} else {
@@ -378,7 +379,7 @@ function createServer(_store, _settings){	//объект создания сер
 		self.ip2banGCStop();
 		setTimeout(createServer, 10000, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок сервера
-		console.error('ReduxCluster.createServer socket error: '+err.message);
+		self.store.stderr('ReduxCluster.createServer socket error: '+err.message);
 		if(typeof(self.server.close) === 'function')
 			self.server.close()
 	});
@@ -435,10 +436,10 @@ function createClient(_store, _settings){	//объект создания кли
 		next1();
 	});
 	self.parser.on('error',function(err){
-		LOGGER.warn('ReduxCluster.createClient parser error: '+err);
+		self.store.stderr('ReduxCluster.createClient parser error: '+err);
 	});
 	self.event.on('error',function(err){
-		LOGGER.warn('ReduxCluster.createClient parser error: '+err);
+		self.store.stderr('ReduxCluster.createClient parser error: '+err);
 	});
 	self.client.on('connect', function(){
 		_store.connected = true;
@@ -448,7 +449,7 @@ function createClient(_store, _settings){	//объект создания кли
 			try {
 				return self.client.writeNEW(Buffer.from(JSON.stringify(_data)));
 			} catch(err){
-				console.error('ReduxCluster.createClient write error: '+err.message);
+				stdout('ReduxCluster.createClient write error: '+err.message);
 				return;
 			}
 		}
@@ -464,7 +465,7 @@ function createClient(_store, _settings){	//объект создания кли
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:false});
 		setTimeout(createClient, 250, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок клиента
-		console.error('ReduxCluster.createClient client error: '+err.message);
+		self.store.stderr('ReduxCluster.createClient client error: '+err.message);
 	}).pipe(self.parser).pipe(self.event);
 }
 

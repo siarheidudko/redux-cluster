@@ -58,6 +58,13 @@ Synchronize your redux storage in a cluster.
 ```
 	Test.dispatch({type:'TASK', payload: {version:'1111111'}})
 ```
+  
+#### Error output callback  
+Default is console.error  
+  
+```
+	Test.stderr = function(err){console.error(err);}
+```
    
 ### Stability: 1 - Experimental     
 Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.
