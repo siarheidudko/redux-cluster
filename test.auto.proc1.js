@@ -83,26 +83,14 @@ if(!Cluster.isMaster){
 	var ok = 0;
 	var bad = 0;
 	setInterval(function(){
-		if(ok+bad < 500){	//строгий режим
-			if(Lodash.isEqual(Test.getState().versions, Test2.getState().versions)){
-				ok++;
-				console.log(Colors.green("ok-"+ok+'|'+parseInt((ok*100/(ok+bad)), 10)+'%'));
-			}else {
-				bad++;
-				console.log(Colors.red("bad-"+bad+'|'+parseInt((bad*100/(ok+bad)), 10)+'%'));
-				console.log(Test.getState().versions.length+' | '+Test2.getState().versions.length)
-				console.log(Test.getState().versions[Test.getState().versions.length-1]+' | '+ Test2.getState().versions[Test2.getState().versions.length-1] );
-			}
-		} else{	//не строгий режим
-			if(Test.getState().versions.length === Test2.getState().versions.length){
-				ok++;
-				console.log(Colors.green("ok-"+ok+'|'+parseInt((ok*100/(ok+bad)), 10)+'%'));
-			}else {
-				bad++;
-				console.log(Colors.red("bad-"+bad+'|'+parseInt((bad*100/(ok+bad)), 10)+'%'));
-				console.log(Test.getState().versions.length+' | '+Test2.getState().versions.length)
-				console.log(Test.getState().versions[Test.getState().versions.length-1]+' | '+ Test2.getState().versions[Test2.getState().versions.length-1] );
-			}
+		if(Lodash.isEqual(Test.getState().versions, Test2.getState().versions)){
+			ok++;
+			console.log(Colors.green("ok-"+ok+'|'+parseInt((ok*100/(ok+bad)), 10)+'%'));
+		}else {
+			bad++;
+			console.log(Colors.red("bad-"+bad+'|'+parseInt((bad*100/(ok+bad)), 10)+'%'));
+			console.log(Test.getState().versions.length+' | '+Test2.getState().versions.length)
+			console.log(Test.getState().versions[Test.getState().versions.length-1]+' | '+ Test2.getState().versions[Test2.getState().versions.length-1] );
 		}
 	}, 500);
 }
