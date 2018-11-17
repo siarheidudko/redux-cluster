@@ -180,9 +180,13 @@ function ReduxCluster(_reducer){
 		return new Promise(function(resolve, reject){
 			loadBackup().then(function(val){
 				new createBackup();
+				resolve(true);
 			}).catch(function(err){
 				if(err.message.toLowerCase().indexOf("no such file or directory") !== -1){
 					new createBackup();
+					resolve(true);
+				} else {
+					reject(err);
 				}
 			});
 		});
