@@ -13,24 +13,26 @@ Synchronize your redux storage in a cluster.
 - Uses IPC only (in Basic Scheme) or IPC and Socket (in Cluster Scheme).  
 - Store are isolated and identified by means of hashes.  
   
+
 ## Install  
   
 ```
 	npm i redux-cluster --save
 ```
   
+
 ## Use  
-[Подробное описание RU](https://sergdudko.tk/2018/11/14/redux-cluster-%D0%BF%D1%80%D0%BE%D0%B4%D0%BE%D0%BB%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5-%D0%B8%D0%BB%D0%B8-%D1%81%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F-%D0%BF%D0%B0%D0%BC/ "Подробное описание RU")  
+[Подробное описание RU](https://sergdudko.tk/2018/11/14/redux-cluster-%D0%BF%D1%80%D0%BE%D0%B4%D0%BE%D0%BB%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5-%D0%B8%D0%BB%D0%B8-%D1%81%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F-%D0%BF%D0%B0%D0%BC/ "Подробное описание RU")   
   
-### Stability: 2 - Stable   
-  
-#### Connection library  
+
+### Connection library  
     
 ```
 	var ReduxCluster = require('redux-cluster');
 ```
   
-#### Create store  
+
+### Create store  
     
 ```
 	var Test = ReduxCluster.createStore(editProcessStorage);
@@ -48,7 +50,8 @@ Synchronize your redux storage in a cluster.
 	}
 ```
   
-#### Subscribe updates  
+
+### Subscribe updates  
    
 ```
 	Test.subscribe(function(){
@@ -61,20 +64,23 @@ Synchronize your redux storage in a cluster.
 	});
 ```
   
-#### Dispatch event  
+
+### Dispatch event  
   
 ```
 	Test.dispatch({type:'TASK', payload: {version:'1111111'}})
 ```
   
-#### Error output callback  
+
+### Error output callback  
 Default is console.error  
   
 ```
 	Test.stderr = function(err){console.error(err);}
 ```     
   
-#### Synchronization mode  
+
+### Synchronization mode  
 This mode is enabled for the basic scheme as well.   
 Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 (default) action will be additionally sent a snapshot.  
 The action mode on the local machine showed the store oneness per unit of time at least 75%. The test was conducted under the following conditions:  
@@ -93,14 +99,16 @@ Already on the basis of the fact that after 8 hours the Store images remained id
 Test.mode = "action";
 ``` 
   
-#### Snapshot synchronization frequency (for action mode)  
+
+### Snapshot synchronization frequency (for action mode)  
 Number of actions before a snapshot of guaranteed synchronization will be sent. Default 100 actions.  
   
 ```
 Test.resync = 100;
 ```  
-   
-#### Create socket server  
+  
+
+### Create socket server  
 Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.  
   
 ```
@@ -123,7 +131,8 @@ Options <Object> Required:
 - port <Integer> - port (optional, default 10001), if use as TCP  
 - logins <Object> - login - password pairs as `{login1:password1, login2:password2}`  
   
-#### Create socket client    
+
+### Create socket client    
 
 ```
 Test.createClient(<Options>);
@@ -146,14 +155,16 @@ Options <Object> Required:
 - login <String> - login in socket  
 - password <String> - password in socket  
   
-#### Connection status   
+
+### Connection status   
 return <Boolean> true if connected, false if disconnected  
   
 ```
 Test.connected;
 ```
+  
 
-#### Connection role  
+### Connection role  
 return <Array> role:  
 
 - master (if Master process in Cluster, sends and listen action to Worker) 
@@ -165,7 +176,8 @@ return <Array> role:
 Test.role;
 ```
   
-#### Save storage to disk and boot at startup  
+
+### Save storage to disk and boot at startup  
 Save storage to disk and boot at startup. It is recommended to perform these actions only in the primary server / master, since they create a load on the file system.  
 Attention! For Worker and Master, you must specify different paths. Return Promise object. 
 ```
@@ -190,8 +202,8 @@ Options <Object> Required:
 - timeout <Integer> - backup timeout (time in seconds for which data can be lost), if count is omitted.  
 - count <Integer> - amount of action you can lose  
   
-## Architectural schemes  
 
+## Architectural schemes  
 
 #### Basic Scheme  
   
