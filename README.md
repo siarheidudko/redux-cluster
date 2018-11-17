@@ -129,9 +129,9 @@ Options <Object> Required:
 - path <String> - name of the file socket (linux) or the name of the named channel (windows), if use as IPC  
 - host <String> - hostname or ip-address (optional, default 0.0.0.0), if use as TCP  
 - port <Integer> - port (optional, default 10001), if use as TCP  
-- logins <Object> - login - password pairs as `{login1:password1, login2:password2}`
-  
+- logins <Object> - login - password pairs as `{login1:password1, login2:password2}`.
 
+  
 ### Create socket client    
 
 ```
