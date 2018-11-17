@@ -1,6 +1,13 @@
 ﻿﻿
 # Redux-Cluster  
-Synchronize your redux storage in a cluster.  
+Synchronize your redux storage in a cluster. 
+
+
+[![npm](https://img.shields.io/npm/v/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+[![npm](https://img.shields.io/npm/dy/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+[![NpmLicense](https://img.shields.io/npm/l/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+![GitHub last commit](https://img.shields.io/github/last-commit/siarheidudko/redux-cluster.svg)
+![GitHub release](https://img.shields.io/github/release/siarheidudko/redux-cluster.svg)
   
 - Supports native methods of redux.  
 - Uses IPC only (in Basic Scheme) or IPC and Socket (in Cluster Scheme).  

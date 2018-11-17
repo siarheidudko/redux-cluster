@@ -235,15 +235,15 @@ function ReduxCluster(_reducer){
 							_createBackup.c = 0;
 						}
 						if(_createBackup.c === 0){
-							_createBackup.update = true;
+							_update = true;
 						}
 					}
-					if(_createBackup.update){
+					if(_update){
 						_createBackup.write();
 					}
 				}
 			});
-			_createBackup.write = function(_restart){	//запись в fs
+			_createBackup.write = function(_restart, _callback){	//запись в fs
 				if(_createBackup.allowed || _restart){
 					try{
 						var _string = JSON.stringify(self.getState());
@@ -262,16 +262,20 @@ function ReduxCluster(_reducer){
 								if (_err) {
 									self.stderr('ReduxCluster.backup write error: '+_err);
 									_createBackup.allowed = false;
-									setTimeout(_createBackup.write(true), 1000);
+									setTimeout(_createBackup.write, 1000, true, _callback);
 								}
 							});
-							if(typeof(_resultBackup) === 'undefined')
+							if(typeof(_resultBackup) === 'undefined'){
 								_createBackup.allowed = true;
+								if(typeof(_callback) === 'function'){
+									_callback(true);
+								}
+							}
 						}
 					} catch(_e){
 						self.stderr('ReduxCluster.backup write error: '+_e);
 						_createBackup.allowed = false;
-						setTimeout(_createBackup.write(true), 1000);
+						setTimeout(_createBackup.write, 1000, true, _callback);
 					}
 				}
 			}
@@ -621,6 +625,4 @@ function replacer(data_val, value_val){
 ReduxClusterModule.createStore = createStore; 	//переопределяю функцию создания хранилища
 
 module.exports = ReduxClusterModule;
-	
-	
 	
