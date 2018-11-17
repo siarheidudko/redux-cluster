@@ -130,7 +130,7 @@ Options <Object> Required:
 - host <String> - hostname or ip-address (optional, default 0.0.0.0), if use as TCP  
 - port <Integer> - port (optional, default 10001), if use as TCP  
 - logins <Object> - login - password pairs as `{login1:password1, login2:password2}`.
-
+<a/>
   
 ### Create socket client    
 
