@@ -182,7 +182,7 @@ function ReduxCluster(_reducer){
 				new createBackup();
 				resolve(true);
 			}).catch(function(err){
-				if(err.message.toLowerCase().indexOf("no such file or directory") !== -1){
+				if(err && err.message.toLowerCase().indexOf("no such file or directory") !== -1){
 					new createBackup();
 					resolve(true);
 				} else {
@@ -506,7 +506,7 @@ function createServer(_store, _settings){	//объект создания сер
 	});
 	if(typeof(self.listen.path) === 'string'){
 		Fs.unlink(self.listen.path, function(err){
-			if(err.message.toLowerCase().indexOf("no such file or directory") === -1)
+			if(err && err.message.toLowerCase().indexOf("no such file or directory") === -1)
 				self.store.stderr('ReduxCluster.createServer socket error: '+err);
 			self.server.listen(self.listen);
 		});
