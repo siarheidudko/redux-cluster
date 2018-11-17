@@ -56,7 +56,7 @@ var Test2 = ReduxCluster.createStore(editProcessStorage2);
 
 if(Cluster.isMaster){
 	
-	Test.createClient({host: "localhost", port: 8888, login:"test2", password:'123456'});
+	Test.createClient({host: "localhost", port: 8888, login:"test", password:'123456'});
 	
 	setTimeout(function(){Cluster.fork();}, i*20000);
 	
@@ -68,7 +68,7 @@ if(Cluster.isMaster){
 	}, 550);
 	
 } else {
-	
+	Test2.backup({count:1, path:"./test2.backup", key:"test"});
 	Test2.createServer({host: "0.0.0.0", port: 8889, logins:{test2:'123456'}});
 	
 	Test.dispatch({type:'TASK', payload: {version:'WorkerRemote0'}});

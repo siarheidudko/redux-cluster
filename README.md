@@ -65,14 +65,11 @@ Default is console.error
   
 ```
 	Test.stderr = function(err){console.error(err);}
-```
-   
-### Stability: 1 - Experimental     
-Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.
+```     
   
 #### Synchronization mode  
 This mode is enabled for the basic scheme as well.   
-Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 action will be additionally sent a snapshot.  
+Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 (default) action will be additionally sent a snapshot.  
 The action mode on the local machine showed the store oneness per unit of time at least 75%. The test was conducted under the following conditions:  
 - Work pattern test1 `<Store 1 Process Worker1> -> <Store 1 Process Master1> -> <Store 1 Process Master2> -> <Store 1 Process Worker2> -> <Store 2 Process Worker2> -> <TCP> -> <Store 2 Process Master1> -> <Store 2 Process Worker1>` by comparing `Store 1` and `Store 2` in `Process Worker1`.  
 - Workflow test2 `<Store 1 Process Worker1> -> <Store 1 Process Master1> -> <Store 2 Process Master1> -> <Store 2 Process Worker1>` by comparing `Store 1` and `Store 2` in `Process Worker1`.  
@@ -87,9 +84,17 @@ Already on the basis of the fact that after 8 hours the Store images remained id
    
 ```
 Test.mode = "action";
+``` 
+  
+#### Snapshot synchronization frequency (for action mode)  
+Number of actions before a snapshot of guaranteed synchronization will be sent. Default 100 actions.  
+  
+```
+Test.resync = 100;
 ```  
    
 #### Create socket server  
+Please familiarize yourself with the architectural schemes before use. In Windows createServer is not supported in child process (named channel write is not supported in the child process), please use as TCP-server.  
   
 ```
 Test.createServer(<Options>);
@@ -128,7 +133,7 @@ Test2.createClient({host: "localhost", port: 8888, login:"test2", password:'1234
   
 Options <Object> Required:  
   
-- path <String> - name of the file socket (linux) or the name of the named channel (windows), if use as IPC  
+- path <String> - name of the file socket (linux, file will be overwritten!) or the name of the named channel (windows), if use as IPC  
 - host <String> - hostname or ip-address (optional, default 0.0.0.0), if use as TCP  
 - port <Integer> - port (optional, default 10001), if use as TCP  
 - login <String> - login in socket  
@@ -152,7 +157,32 @@ return <Array> role:
 ```
 Test.role;
 ```
-
+  
+#### Save storage to disk and boot at startup  
+Save storage to disk and boot at startup. It is recommended to perform these actions only in the primary server / master, since they create a load on the file system.  
+Attention! For Worker and Master, you must specify different paths. Return Promise object. 
+```
+  Test.backup(<Object>);
+```
+  
+##### Example  
+  
+```
+Test.backup({
+	path:'./test.backup', 
+	key:"password-for-encrypter", 
+	count:1000
+}).catch(function(err){
+	... you handler
+});
+```
+   
+Options <Object> Required:  
+- path <String> - file system path for backup (Attention! File will be overwritten!)  
+- key <String> - encryption key (can be omitted)  
+- timeout <Integer> - backup timeout (time in seconds for which data can be lost), if count is omitted.  
+- count <Integer> - amount of action you can lose  
+  
 ## Architectural schemes  
 
 
@@ -162,7 +192,7 @@ Test.role;
   
 #### Cluster Scheme   
 You can use `createServer(<Object>)` in any process in cluster (and outside cluster process).   
-Using `createClient(<Object>)` is logical in a Master process or a single process. In any case, if you create a `createClient(<Onject>)` in the Worker process, it will not work with the rest of the cluster processes, does not have access to them. So you will have to create `createClient(<Onject>)` in each Worker process that needs access to the Store.  
+Using `createClient(<Object>)` is logical in a Master process or a single process. In any case, if you create a `createClient(<Object>)` in the Worker process, it will not work with the rest of the cluster processes, does not have access to them. So you will have to create `createClient(<Object>)` in each Worker process that needs access to the Store.  
    
 ![ClusterScheme](https://github.com/siarheidudko/redux-cluster/raw/master/img/ClusterScheme.png)  
   

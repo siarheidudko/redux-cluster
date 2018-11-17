@@ -1,3 +1,5 @@
 $ cat .gitignore
 node_modules
 .tmp.drivedownload
+test1.backup
+test2.backup

@@ -17,7 +17,8 @@ var Redux = require('redux'),
 	Path = require('path'),
 	Os = require('os'),
 	Jsonstream = require('JSONStream'),
-	Eventstream = require('event-stream');
+	Eventstream = require('event-stream'),
+	Fs = require('fs');
 	
 var ReduxClusterModule = {};	//модуль
 Object.assign(ReduxClusterModule, Redux);	//копирую свойства Redux
@@ -41,6 +42,20 @@ function hasher(data){	//хэширование редьюсера
 		return(hash.digest('hex'));
 	} else 
 		return;
+}
+
+function encrypter(data, pass){	//енкриптор
+	const cipher = Crypto.createCipher('aes192', hasher(pass));
+	let encrypted = cipher.update(data, 'utf8', 'hex');
+	encrypted += cipher.final('hex');
+	return encrypted;
+}
+
+function decrypter(data, pass){	//декриптор
+	const cipher = Crypto.createDecipher('aes192', hasher(pass));
+	let decrypted = cipher.update(data, 'hex', 'utf8');
+	decrypted += cipher.final('utf8');
+	return decrypted;
 }
 
 
@@ -103,6 +118,7 @@ function ReduxCluster(_reducer){
 	self.role = [];
 	self.mode = "snapshot";
 	self.connected = false;
+	self.resync = 100;
 	self.RCHash = hasher(_reducer.name);	//создаю метку текущего редьюсера для каждого экземпляра
 	if(typeof(reducers[_reducer.name]) === 'undefined'){
 		reducers[_reducer.name] = self.RCHash;
@@ -136,11 +152,11 @@ function ReduxCluster(_reducer){
 	};
 	self.newReducer = function(state=self.defaulstate, action){	//собственный редьюсер
 		if(self.mode === "action"){	//в режиме action отправляем action в воркеры и сокеты
-			if((typeof(self.counter) === 'undefined') || (self.counter === 100))
+			if((typeof(self.counter) === 'undefined') || (self.counter === self.resync))
 				self.counter = 1;
 			else
 				self.counter++;
-			if(self.counter === 100){	//каждый сотый action синхронизируем хранилище (на случай рассинхронизации)
+			if(self.counter === self.resync){	//каждый N-action синхронизируем хранилище (на случай рассинхронизации)
 				if(self.role.indexOf("master") !== -1)
 					setTimeout(self.sendtoall, 100);
 				if(self.role.indexOf("server") !== -1)
@@ -158,9 +174,107 @@ function ReduxCluster(_reducer){
 			return self.altReducer(state, action);
 		}
 	}
+	Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с оригинальным редьюсером
+	self.backup = function(object){
+		var _object = Lodash.clone(object);
+		return new Promise(function(resolve, reject){
+			loadBackup().then(function(val){
+				new createBackup();
+			}).catch(function(err){
+				if(err.message.toLowerCase().indexOf("no such file or directory") !== -1){
+					new createBackup();
+				}
+			});
+		});
+		function loadBackup(){
+			return new Promise(function(res, rej){
+				Fs.readFile(_object["path"], function(_err,_data){
+					if(_err){
+						rej(new Error('ReduxCluster.backup load error: '+_err.message));
+					} else {
+						try{
+							var _string = _data.toString();
+							if(typeof(_object["key"]) !== 'undefined')
+								_string = decrypter(_string, _object["key"]);
+							var _obj = JSON.parse(_string);
+							if(typeof(self.dispatchNEW) === 'function')
+								self.dispatchNEW({type:"REDUX_CLUSTER_SYNC", payload:_obj});
+							else
+								self.dispatch({type:"REDUX_CLUSTER_SYNC", payload:_obj});
+							setTimeout(function(){
+								res(true);
+							}, 500);
+						} catch (_e) {
+							rej(new Error('ReduxCluster.backup decoding error: '+_e.message))
+						}
+					}
+				});
+			});
+		}
+		function createBackup(){
+			var _createBackup = this;
+			_createBackup.c = 0;
+			_createBackup.allowed = true;
+			_createBackup.disable = self.subscribe(function(){	//подписываю на обновление
+				if(typeof(_object['timeout']) === 'number'){	//приоритетная настройка
+					if(_createBackup.allowed){	//запись разрешена
+						_createBackup.allowed = false;	//запрещаю повторный запуск
+						setTimeout(function(){
+							_createBackup.write(true);
+						},_object['timeout']*1000);
+					}
+				} else {
+					var _update = false;
+					if(typeof(_object['count']) === 'number'){	//проверяю счетчик
+						_createBackup.c++;
+						if(_createBackup.c === _object['count']){
+							_createBackup.c = 0;
+						}
+						if(_createBackup.c === 0){
+							_createBackup.update = true;
+						}
+					}
+					if(_createBackup.update){
+						_createBackup.write();
+					}
+				}
+			});
+			_createBackup.write = function(_restart){	//запись в fs
+				if(_createBackup.allowed || _restart){
+					try{
+						var _string = JSON.stringify(self.getState());
+						if(typeof(_object['key']) !== 'undefined'){
+							try{
+								_string = encrypter(_string, _object['key']);
+								backupwrite();
+							} catch(_err){
+								self.stderr('ReduxCluster.backup encrypt error: '+_err);
+							}
+						} else {
+							backupwrite();
+						}
+						function backupwrite(){
+							var _resultBackup = Fs.writeFileSync(_object['path'], _string, (_err) => {
+								if (_err) {
+									self.stderr('ReduxCluster.backup write error: '+_err);
+									_createBackup.allowed = false;
+									setTimeout(_createBackup.write(true), 1000);
+								}
+							});
+							if(typeof(_resultBackup) === 'undefined')
+								_createBackup.allowed = true;
+						}
+					} catch(_e){
+						self.stderr('ReduxCluster.backup write error: '+_e);
+						_createBackup.allowed = false;
+						setTimeout(_createBackup.write(true), 1000);
+					}
+				}
+			}
+		}
+	}
 	if(Cluster.isMaster){ //мастер
 		if(self.role.indexOf("master") === -1) { self.role.push("master"); }
-		Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с оригинальным редьюсером
 		self.unsubscribe = self.subscribe(function(){	//подписываю отправку снимков при изменении только в режиме snapshot
 			if(self.mode === "snapshot")
 				self.sendtoall();
@@ -191,7 +305,6 @@ function ReduxCluster(_reducer){
 		self.connected = true;
 	} else {	//воркер
 		if(self.role.indexOf("worker") === -1) { self.role.push("worker"); }
-		Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с собственным редьюсером
 		self.dispatchNEW = self.dispatch;	//переопределяю диспатчер
 		self.dispatch = function(_data){ 
 			process.send({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:self.RCHash, _action:_data});	//вместо оригинального диспатчера подкладываю IPC
@@ -383,7 +496,15 @@ function createServer(_store, _settings){	//объект создания сер
 		if(typeof(self.server.close) === 'function')
 			self.server.close()
 	});
-	self.server.listen(self.listen);
+	if(typeof(self.listen.path) === 'string'){
+		Fs.unlink(self.listen.path, function(err){
+			if(err.message.toLowerCase().indexOf("no such file or directory") === -1)
+				self.store.stderr('ReduxCluster.createServer socket error: '+err);
+			self.server.listen(self.listen);
+		});
+	} else {
+		self.server.listen(self.listen);
+	}
 }
 
 function createClient(_store, _settings){	//объект создания клиента
