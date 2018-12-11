@@ -578,7 +578,7 @@ function createClient(_store, _settings){	//объект создания кли
 			try {
 				return self.client.writeNEW(Buffer.from(JSON.stringify(_data)));
 			} catch(err){
-				stdout('ReduxCluster.createClient write error: '+err.message);
+				self.store.stderr('ReduxCluster.createClient write error: '+err.message);
 				return;
 			}
 		}
