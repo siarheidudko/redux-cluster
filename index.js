@@ -114,12 +114,16 @@ function decrypter(data, pass){	//декриптор
 
 function ReduxCluster(_reducer){
 	var self = this;
-	self.stderr = console.error;
-	self.role = [];
-	self.mode = "snapshot";
-	self.connected = false;
-	self.resync = 100;
+	self.stderr = console.error;	//callback для ошибок
+	self.role = [];		//роль
+	self.mode = "action";	//тип синхронизации по умолчанию
+	self.connected = false;		//статус соединения
+	self.resync = 1000;		//количество действий для пересинхронизации
 	self.RCHash = hasher(_reducer.name);	//создаю метку текущего редьюсера для каждого экземпляра
+	self.version = require('./package.json').version;	//версия пакета
+	self.homepage = require('./package.json').homepage;	//домашняя страница пакета
+	self.altReducer = _reducer;	//оригинальный редьюсер
+	self.allsock = {};	//сервера
 	if(typeof(reducers[_reducer.name]) === 'undefined'){
 		reducers[_reducer.name] = self.RCHash;
 	} else {
@@ -138,8 +142,12 @@ function ReduxCluster(_reducer){
 			}
 		}
 	}
-	self.sendtoallsock = function(_message){};	//заглушка (будет переопределена в createServer)
-	self.altReducer = _reducer;	//оригинальный редьюсер
+	self.sendtoallsock = function(_message){	//отправка сообщений во все сокеты
+		for(const id in self.allsock){
+			if((typeof(self.allsock[id]) === 'object') && (typeof(self.allsock[id].sendtoall) === 'function'))
+				setTimeout(self.allsock[id].sendtoall, 1, _message);
+		}
+	};	
 	try{
 		var _d = self.altReducer(undefined, {});	//получаю значение state при старте
 		if(typeof(_d) === 'object'){
@@ -174,7 +182,8 @@ function ReduxCluster(_reducer){
 			return self.altReducer(state, action);
 		}
 	}
-	Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с оригинальным редьюсером
+	Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с собственным редьюсером
+	delete self.replaceReducer;	//удаляю замену редьюсера
 	self.backup = function(object){
 		var _object = Lodash.clone(object);
 		return new Promise(function(resolve, reject){
@@ -355,6 +364,7 @@ function createStore(_reducer){		//функция создания хранил�
 
 function createServer(_store, _settings){	//объект создания сервера
 	var self = this;
+	self.uid = generateUID();
 	self.store = _store;
 	self.sockets = {};
 	self.database = {};
@@ -400,7 +410,7 @@ function createServer(_store, _settings){	//объект создания сер
 		}
 	}
 	if(self.store.mode === "action")	//переопределяю функцию отправки в сокеты (вызывается редьюсером первичного мастера)
-		self.store.sendtoallsock = self.sendtoall;
+		self.store.allsock[self.uid] = self;
 	self.unsubscribe = self.store.subscribe(function(){	//подписываю сокет на изменения Redux только в режиме snapshot
 		if(self.store.mode === "snapshot")
 			self.sendtoall();
@@ -498,11 +508,12 @@ function createServer(_store, _settings){	//объект создания сер
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:false});
 		self.unsubscribe();
 		self.ip2banGCStop();
+		delete _store.allsock[self.uid];
 		setTimeout(createServer, 10000, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок сервера
 		self.store.stderr('ReduxCluster.createServer socket error: '+err.message);
 		if(typeof(self.server.close) === 'function')
-			self.server.close()
+			self.server.close();
 	});
 	if(typeof(self.listen.path) === 'string'){
 		Fs.unlink(self.listen.path, function(err){
@@ -623,6 +634,13 @@ function replacer(data_val, value_val){
 }
 
 ReduxClusterModule.createStore = createStore; 	//переопределяю функцию создания хранилища
+ReduxClusterModule.functions = {
+	generateUID: generateUID,
+	replacer: replacer,
+	hasher: hasher,
+	encrypter: encrypter,
+	decrypter: decrypter
+};
 
 module.exports = ReduxClusterModule;
 	
