@@ -113,7 +113,7 @@ function decrypter(data, pass){	//декриптор
 */
 
 function ReduxCluster(_reducer){
-	var self = this;
+	let self = this;
 	self.stderr = console.error;	//callback для ошибок
 	self.role = [];		//роль
 	self.mode = "action";	//тип синхронизации по умолчанию
@@ -149,7 +149,7 @@ function ReduxCluster(_reducer){
 		}
 	};	
 	try{
-		var _d = self.altReducer(undefined, {});	//получаю значение state при старте
+		let _d = self.altReducer(undefined, {});	//получаю значение state при старте
 		if(typeof(_d) === 'object'){
 			self.defaulstate = _d;
 		} else {
@@ -176,7 +176,7 @@ function ReduxCluster(_reducer){
 				setTimeout(self.sendtoallsock, 1, {_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:self.RCHash, _action:action});
 		}
 		if (action.type === 'REDUX_CLUSTER_SYNC'){
-			var state_new = Lodash.clone(action.payload);
+			let state_new = Lodash.clone(action.payload);
 			return state_new;
 		} else { 
 			return self.altReducer(state, action);
@@ -185,7 +185,7 @@ function ReduxCluster(_reducer){
 	Object.assign(self, Redux.createStore(self.newReducer));	//создаю хранилище с собственным редьюсером
 	delete self.replaceReducer;	//удаляю замену редьюсера
 	self.backup = function(object){
-		var _object = Lodash.clone(object);
+		let _object = Lodash.clone(object);
 		return new Promise(function(resolve, reject){
 			loadBackup().then(function(val){
 				new createBackup();
@@ -206,10 +206,10 @@ function ReduxCluster(_reducer){
 						rej(new Error('ReduxCluster.backup load error: '+_err.message));
 					} else {
 						try{
-							var _string = _data.toString();
+							let _string = _data.toString();
 							if(typeof(_object["key"]) !== 'undefined')
 								_string = decrypter(_string, _object["key"]);
-							var _obj = JSON.parse(_string);
+							let _obj = JSON.parse(_string);
 							if(typeof(self.dispatchNEW) === 'function')
 								self.dispatchNEW({type:"REDUX_CLUSTER_SYNC", payload:_obj});
 							else
@@ -225,7 +225,7 @@ function ReduxCluster(_reducer){
 			});
 		}
 		function createBackup(){
-			var _createBackup = this;
+			let _createBackup = this;
 			_createBackup.c = 0;
 			_createBackup.allowed = true;
 			_createBackup.disable = self.subscribe(function(){	//подписываю на обновление
@@ -237,7 +237,7 @@ function ReduxCluster(_reducer){
 						},_object['timeout']*1000);
 					}
 				} else {
-					var _update = false;
+					let _update = false;
 					if(typeof(_object['count']) === 'number'){	//проверяю счетчик
 						_createBackup.c++;
 						if(_createBackup.c === _object['count']){
@@ -255,7 +255,7 @@ function ReduxCluster(_reducer){
 			_createBackup.write = function(_restart, _callback){	//запись в fs
 				if(_createBackup.allowed || _restart){
 					try{
-						var _string = JSON.stringify(self.getState());
+						let _string = JSON.stringify(self.getState());
 						if(typeof(_object['key']) !== 'undefined'){
 							try{
 								_string = encrypter(_string, _object['key']);
@@ -267,7 +267,7 @@ function ReduxCluster(_reducer){
 							backupwrite();
 						}
 						function backupwrite(){
-							var _resultBackup = Fs.writeFileSync(_object['path'], _string, (_err) => {
+							let _resultBackup = Fs.writeFileSync(_object['path'], _string, (_err) => {
 								if (_err) {
 									self.stderr('ReduxCluster.backup write error: '+_err);
 									_createBackup.allowed = false;
@@ -344,7 +344,7 @@ function ReduxCluster(_reducer){
 }
 
 function createStore(_reducer){		//функция создания хранилища
-	var _ReduxCluster = new ReduxCluster(_reducer);		//создаю экземпляр хранилища
+	let _ReduxCluster = new ReduxCluster(_reducer);		//создаю экземпляр хранилища
 	_ReduxCluster.createServer = function(_settings){	//подключаю объект создания сервера
 		if((!Cluster.isMaster) && (typeof(_settings.path) === 'string') && (Os.platform() === 'win32')){	//IPC в дочернем процессе кластера не работает в windows
 			throw new Error("Named channel is not supported in the child process, please use TCP-server");
@@ -363,7 +363,7 @@ function createStore(_reducer){		//функция создания хранил�
 }
 
 function createServer(_store, _settings){	//объект создания сервера
-	var self = this;
+	let self = this;
 	self.uid = generateUID();
 	self.store = _store;
 	self.sockets = {};
@@ -416,8 +416,8 @@ function createServer(_store, _settings){	//объект создания сер
 			self.sendtoall();
 	});
 	self.server = Net.createServer((socket) => {
-		var _i2bTest = replacer(socket.remoteAddress, true);
-		var _uid = generateUID();
+		let _i2bTest = replacer(socket.remoteAddress, true);
+		let _uid = generateUID();
 		socket.uid = _uid;
 		socket.writeNEW = socket.write;	//переопределяю write (объектный режим)
 		socket.write = function(_data){
@@ -464,7 +464,7 @@ function createServer(_store, _settings){	//объект создания сер
 								   socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:true});
 								} else {
 									if(typeof(_i2bTest) === 'string') { 
-										var _tempCount = 0;
+										let _tempCount = 0;
 										if(typeof(self.ip2ban[_i2bTest]) === 'object'){ 
 											_tempCount = self.ip2ban[_i2bTest].count; 
 											if(_tempCount >= 5) { _tempCount = 0; } //по таймауту сбрасываю счетчик попыток
@@ -527,7 +527,7 @@ function createServer(_store, _settings){	//объект создания сер
 }
 
 function createClient(_store, _settings){	//объект создания клиента
-	var self = this;
+	let self = this;
 	self.store = _store;
 	self.listen = {port:10001};	//дефолтные настройки
 	if(typeof(_settings) === 'object'){	//переопределяю конфиг
@@ -611,12 +611,12 @@ function createClient(_store, _settings){	//объект создания кли
 
 //генерация uid
 function generateUID() { 
-	var d = new Date().getTime();
+	let d = new Date().getTime();
 	if (typeof performance !== 'undefined' && typeof performance.now === 'function'){
 		d += performance.now(); 
 	}
 	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-		var r = (d + Math.random() * 16) % 16 | 0;
+		let r = (d + Math.random() * 16) % 16 | 0;
 		d = Math.floor(d / 16);
 		return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
 	});

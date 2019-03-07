@@ -68,17 +68,18 @@ if(Cluster.isMaster){
 	}, 550);
 	
 } else {
-	Test2.backup({count:1, path:"./test2.backup", key:"test"});
-	Test2.createServer({host: "0.0.0.0", port: 8889, logins:{test2:'123456'}});
-	
-	Test.dispatch({type:'TASK', payload: {version:'WorkerRemote0'}});
-	var i = 0;
-	setInterval(function(){
-		Test.dispatch({type:'TASK', payload: {version:'WorkerRemote'+i}});
-		i++;
-	}, 560, i);
-	
-	Test.subscribe(function(){
-		Test2.dispatch({type:'UPDATE', payload: {versions:Test.getState().versions}});
+	Test2.backup({count:1, path:"./test2.backup", key:"test"}).finally(function(){
+		Test2.createServer({host: "0.0.0.0", port: 8889, logins:{test2:'123456'}});
+		
+		Test.dispatch({type:'TASK', payload: {version:'WorkerRemote0'}});
+		var i = 0;
+		setInterval(function(){
+			Test.dispatch({type:'TASK', payload: {version:'WorkerRemote'+i}});
+			i++;
+		}, 560, i);
+		
+		Test.subscribe(function(){
+			Test2.dispatch({type:'UPDATE', payload: {versions:Test.getState().versions}});
+		});
 	});
 }

@@ -82,18 +82,10 @@ Default is console.error
 
 ### Synchronization mode  
 This mode is enabled for the basic scheme as well.   
-Set the type of synchronization, the default `snapshot`. Maybe `action` - in this case, synchronization takes place through action, rather than sharing the entire snapshot of the store. This greatly improves performance for large store, but may cause memory to be out of sync. As an attempt to eliminate bug fix sync, each 100 (default) action will be additionally sent a snapshot.  
-The action mode on the local machine showed the store oneness per unit of time at least 75%. The test was conducted under the following conditions:  
-- Work pattern test1 `<Store 1 Process Worker1> -> <Store 1 Process Master1> -> <Store 1 Process Master2> -> <Store 1 Process Worker2> -> <Store 2 Process Worker2> -> <TCP> -> <Store 2 Process Master1> -> <Store 2 Process Worker1>` by comparing `Store 1` and `Store 2` in `Process Worker1`.  
-- Workflow test2 `<Store 1 Process Worker1> -> <Store 1 Process Master1> -> <Store 2 Process Master1> -> <Store 2 Process Worker1>` by comparing `Store 1` and `Store 2` in `Process Worker1`.  
-- `Store 1` in action mode, `Store2` in snapshot mode (otherwise it is impossible to control synchronization)  
-- `Store 1` was filled with an array of up to 500 items, `Store 2` was a snapshot of `Store 1` (see the diagram)  
-- Test1 and test2 were conducted simultaneously (AMD A4-4020 3.2Ghz, 8GB RAM).  
-- `Store 1` and `Store 2` were compared every second for test1 and every 0.5 second for test2.  
-- Testing time 8 hours.  
-- Results test1 92%, test2 75%.  
-  
-Already on the basis of the fact that after 8 hours the Store images remained identical ensures that the action mode does not lead to failures. However, use it with caution.    
+Set the type of synchronization, the default `action`. 
+   
+- action - send a action of the store status for each action and send a snapshot every 1000 (default, Test.resync) action  
+- snapshot -  send a snapshot of the store status for each action  
    
 ```
 Test.mode = "action";
@@ -101,10 +93,10 @@ Test.mode = "action";
   
 
 ### Snapshot synchronization frequency (for action mode)  
-Number of actions before a snapshot of guaranteed synchronization will be sent. Default 100 actions.  
+Number of actions before a snapshot of guaranteed synchronization will be sent. Default 1000 actions.  
   
 ```
-Test.resync = 100;
+Test.resync = 1000;
 ```  
   
 
@@ -175,6 +167,83 @@ return <Array> role:
 ```
 Test.role;
 ```
+  
+
+### Want to use a web socket? Connect the redux-cluster-ws library  
+  
+#### Install  
+  
+```
+	npm i redux-cluster-ws --save
+```
+  
+
+#### Add websocket server wrapper and use  
+  
+```
+require('redux-cluster-ws').server(Test);
+Test.createWSServer(<Options>);
+```
+  
+##### Example  
+  
+```
+require('redux-cluster-ws').server(Test);
+Test.createWSServer({
+	host: "0.0.0.0", 
+	port: 8888, 
+	logins:{
+		test2:'123456'
+	}, 
+	ssl:{
+		key: /path/to/certificate-key,
+		crt: /path/to/certificate,
+		ca:	/path/to/certificate-ca
+	}
+});
+
+require('redux-cluster-ws').server(Test2);
+Test2.createWSServer({
+	host: "localhost", 
+	port: 8889, 
+	logins:{
+		test2:'123456'
+	}
+});
+```
+   
+Options <Object> Required:  
+  
+- host <String> - hostname or ip-address
+- port <Integer> - port (optional, default 10002) 
+- logins <Object> - login - password pairs as `{login1:password1, login2:password2}`. 
+- ssl <Object> - path to server certificate (if use as https, default use http). 
+  
+#### Add websocket client library  
+Client does not use internal Node libraries for webpack compatibility. Therefore, on the client, you must create a store with the same reducer.  
+
+```
+//create Redux Store
+var ReduxClusterWS = require('redux-cluster-ws').client;
+var Test = ReduxClusterWS.createStore(<Reducer>);
+
+//connect to Redux-Cluster server (use socket.io)
+Test.createWSClient(<Options>);
+```
+  
+##### Example  
+  
+```
+var Test = ReduxCluster.createStore(reducer);
+Test.createWSClient({host: "https://localhost", port: 8888, login:"test2", password:'123456'});
+```
+  
+Options <Object> Required:  
+  
+- host <String> - hostname or ip-address (protocol include)  
+- port <Integer> - port (optional, default 10002)  
+- login <String> - login in websocket  
+- password <String> - password in websocket  
   
 
 ### Save storage to disk and boot at startup  
