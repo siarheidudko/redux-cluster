@@ -354,7 +354,9 @@ function createStore(_reducer){		//функция создания хранил�
 		return new createServer(_ReduxCluster, _settings);
 	}
 	_ReduxCluster.createClient = function(_settings){	//подключаю объект создания клиента
-		if(_ReduxCluster.role.indexOf("client") === -1) { _ReduxCluster.role.push("client"); }
+		if(_ReduxCluster.role.indexOf("client") === -1) { _ReduxCluster.role.push("client"); } else {
+			throw new Error('One storage cannot be connected to two servers at the same time.');
+		}
 		if(_ReduxCluster.role.indexOf("worker") !== -1) { _ReduxCluster.role.splice(_ReduxCluster.role.indexOf("worker"), 1); } //удаляю роль воркера, т.к. IPC Master->Worker уничтожена (не обрабатывается)
 		_ReduxCluster.connected = false;
 		return new createClient(_ReduxCluster, _settings);
