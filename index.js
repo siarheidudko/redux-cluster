@@ -4,6 +4,7 @@
  *
  *	Cluster (default IPC cluster channel) module for redux synchronizes all redux store in cluster processes (v.1.0.x).
  *	Cluster (default IPC cluster channel) and Socket (custom IPC or TCP channel) for redux synchronizes all redux store (v.1.1.x).
+ *  Use new Parser and Zlib Stream (v.1.6.x).
  *	LICENSE MIT
  */
 
@@ -16,9 +17,11 @@ var Redux = require('redux'),
 	Net = require('net'),
 	Path = require('path'),
 	Os = require('os'),
-	Jsonstream = require('JSONStream'),
+	Objectstream = require('@sergdudko/objectstream'),
 	Eventstream = require('event-stream'),
-	Fs = require('fs');
+	Fs = require('fs'),
+	Stream = require('stream'),
+	Zlib = require('zlib');
 	
 var ReduxClusterModule = {};	//модуль
 Object.assign(ReduxClusterModule, Redux);	//копирую свойства Redux
@@ -421,10 +424,10 @@ function createServer(_store, _settings){	//объект создания сер
 		let _i2bTest = replacer(socket.remoteAddress, true);
 		let _uid = generateUID();
 		socket.uid = _uid;
-		socket.writeNEW = socket.write;	//переопределяю write (объектный режим)
+		socket.writeNEW = socket.write;	//переопределяю write (объектный режим + сжатие)
 		socket.write = function(_data){
 			try{
-				return socket.writeNEW(Buffer.from(JSON.stringify(_data)));
+				return socket.writeNEW(Zlib.gzipSync(Buffer.from(JSON.stringify(_data))));
 			} catch(err){
 				self.store.stderr('ReduxCluster.createServer write error: '+err.message);
 				return;
@@ -440,7 +443,15 @@ function createServer(_store, _settings){	//объект создания сер
 			}
 		});
 		if((typeof(_i2bTest) === 'undefined') || (typeof(self.ip2ban[_i2bTest]) === 'undefined') || ((typeof(self.ip2ban[_i2bTest]) === 'object') && ((self.ip2ban[_i2bTest].count < 5) || ((self.ip2ban[_i2bTest].time+self.ip2banTimeout) < Date.now())))){
-			self.parser = Jsonstream.parse();
+			self.parser = new Objectstream.Parser();
+			self.mbstring = new Stream.Transform({	//обработка мультибайтовых символов без присвоенной кодировки может срабатывать некорректно
+				transform(_buffer, encoding, callback) {
+					this.push(_buffer)
+					return callback();
+				}
+			});
+			self.mbstring.setEncoding('utf8');
+			self.gunzipper = Zlib.createGunzip();	//поток декомпрессии
 			self.event = Eventstream.map(function (data, next1) {
 				if(data._hash === self.store.RCHash){	//проверяю что сообщение привязано к текущему хранилищу
 					switch(data._msg){
@@ -486,13 +497,19 @@ function createServer(_store, _settings){	//объект создания сер
 				}
 				next1();
 			});
+			self.gunzipper.on('error',function(err){
+				self.store.stderr('ReduxCluster.createServer gunzipper error: '+err);
+			});
+			self.mbstring.on('error',function(err){
+				self.store.stderr('ReduxCluster.createServer mbstring error: '+err);
+			});
 			self.parser.on('error',function(err){
 				self.store.stderr('ReduxCluster.createServer parser error: '+err);
 			});
 			self.event.on('error',function(err){
-				self.store.stderr('ReduxCluster.createServer parser error: '+err);
+				self.store.stderr('ReduxCluster.createServer event error: '+err);
 			});
-			socket.pipe(self.parser).pipe(self.event);
+			socket.pipe(self.gunzipper).pipe(self.mbstring).pipe(self.parser).pipe(self.event);
 		} else {
 			socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:self.store.RCHash, _value:false, _banned: true});
 			if(typeof(socket.end) === 'function'){
@@ -554,7 +571,15 @@ function createClient(_store, _settings){	//объект создания кли
 			self.password = hasher("REDUX_CLUSTER"+_settings.password);
 	}
 	self.client = new Net.createConnection(self.listen);
-	self.parser = Jsonstream.parse();
+	self.parser = new Objectstream.Parser();
+	self.mbstring = new Stream.Transform({	//обработка мультибайтовых символов без присвоенной кодировки может срабатывать некорректно
+		transform(_buffer, encoding, callback) {
+			this.push(_buffer)
+			return callback();
+		}
+	});
+	self.mbstring.setEncoding('utf8');
+	self.gunzipper = Zlib.createGunzip();	//поток декомпрессии
 	self.event = Eventstream.map(function (data, next1) {
 		if(!self.client.destroyed){
 			if(data._hash === self.store.RCHash){
@@ -577,19 +602,25 @@ function createClient(_store, _settings){	//объект создания кли
 		}
 		next1();
 	});
+	self.gunzipper.on('error',function(err){
+		self.store.stderr('ReduxCluster.createClient gunzipper error: '+err);
+	});
+	self.mbstring.on('error',function(err){
+		self.store.stderr('ReduxCluster.createClient mbstring error: '+err);
+	});
 	self.parser.on('error',function(err){
 		self.store.stderr('ReduxCluster.createClient parser error: '+err);
 	});
 	self.event.on('error',function(err){
-		self.store.stderr('ReduxCluster.createClient parser error: '+err);
+		self.store.stderr('ReduxCluster.createClient event error: '+err);
 	});
 	self.client.on('connect', function(){
 		_store.connected = true;
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:true});
-		self.client.writeNEW = self.client.write;	//переопределяю write (объектный режим)
+		self.client.writeNEW = self.client.write;	//переопределяю write  (объектный режим + сжатие)
 		self.client.write = function(_data){
 			try {
-				return self.client.writeNEW(Buffer.from(JSON.stringify(_data)));
+				return self.client.writeNEW(Zlib.gzipSync(Buffer.from(JSON.stringify(_data))));
 			} catch(err){
 				self.store.stderr('ReduxCluster.createClient write error: '+err.message);
 				return;
@@ -608,7 +639,7 @@ function createClient(_store, _settings){	//объект создания кли
 		setTimeout(createClient, 250, _store, _settings);
 	}).on('error', function(err){ //обработка ошибок клиента
 		self.store.stderr('ReduxCluster.createClient client error: '+err.message);
-	}).pipe(self.parser).pipe(self.event);
+	}).pipe(self.gunzipper).pipe(self.mbstring).pipe(self.parser).pipe(self.event);
 }
 
 //генерация uid

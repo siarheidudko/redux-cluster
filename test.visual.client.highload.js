@@ -21,7 +21,7 @@ var testTwo =  true;
 if(Cluster.isMaster){
 	Test.createClient({path: "./mysock.sock", login:"test1", password:'12345'});
 	if(testTwo)
-		Test2.createClient({host: "10.0.8.1", port: 8888, login:"test2", password:'123456'});
+		Test2.createClient({host: "127.0.0.1", port: 8888, login:"test2", password:'123456'});
 }
 	
 function editProcessStorage(state = {version:''}, action){ 
