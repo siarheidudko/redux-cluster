@@ -306,7 +306,7 @@ This is a bad way, it will lead to breaks in the interaction of the ReduxCluster
 #### Basic Scheme  
   
 ```
-var ReduxCluster = require('./index.js'),
+var ReduxCluster = require('redux-cluster'),
 	Cluster = require('cluster'),
 	Lodash = require('lodash');
 	
@@ -351,7 +351,7 @@ if(Cluster.isMaster){
 #### Cluster Scheme Server
   
 ```
-var ReduxCluster = require('./index.js'),
+var ReduxCluster = require('redux-cluster'),
 	Cluster = require('cluster'),
 	Lodash = require('lodash');
 	
@@ -408,7 +408,7 @@ if(Cluster.isMaster){
 #### Cluster Scheme Client
   
 ```
-var ReduxCluster = require('./index.js'),
+var ReduxCluster = require('redux-cluster'),
 	Cluster = require('cluster'),
 	Lodash = require('lodash');
 	
