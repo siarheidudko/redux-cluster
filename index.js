@@ -368,58 +368,58 @@ function createStore(_reducer){		//функция создания хранил�
 }
 
 function createServer(_store, _settings){	//объект создания сервера
-	_store.Server = this;
-	_store.Server.uid = generateUID();
-	_store.Server.sockets = {};
-	_store.Server.database = {};
-	_store.Server.ip2ban = {};
-	_store.Server.ip2banTimeout = 10800000;
-	_store.Server.ip2banGCStart = setInterval(function(){
-		for(const key in _store.Server.ip2ban){
-			if((_store.Server.ip2ban[key].time+_store.Server.ip2banTimeout) < Date.now()){
-				delete _store.Server.ip2ban[key];
+	let self = this;
+	self.uid = generateUID();
+	self.sockets = {};
+	self.database = {};
+	self.ip2ban = {};
+	self.ip2banTimeout = 10800000;
+	self.ip2banGCStart = setInterval(function(){
+		for(const key in self.ip2ban){
+			if((self.ip2ban[key].time+self.ip2banTimeout) < Date.now()){
+				delete self.ip2ban[key];
 			}
 		}
 	}, 60000);
-	_store.Server.ip2banGCStop = function(){ clearInterval(_store.Server.ip2banGCStart); }
-	_store.Server.listen = {port:10001};	//дефолтные настройки
+	self.ip2banGCStop = function(){ clearInterval(self.ip2banGCStart); }
+	self.listen = {port:10001};	//дефолтные настройки
 	if(typeof(_settings) === 'object'){	//переопределяю конфиг
 		if(typeof(_settings.path) === 'string'){
 			switch(Os.platform ()){
 				case 'win32':
-					_store.Server.listen = {path:Path.join('\\\\?\\pipe', _settings.path)};
+					self.listen = {path:Path.join('\\\\?\\pipe', _settings.path)};
 					break;
 				default:
-					_store.Server.listen = {path:Path.join(_settings.path)};
+					self.listen = {path:Path.join(_settings.path)};
 					break;
 			}
 		} else{
 			if(typeof(_settings.host) === 'string')
-				_store.Server.listen.host = _settings.host;
+				self.listen.host = _settings.host;
 			if(typeof(_settings.port) === 'number')
-				_store.Server.listen.port = _settings.port;
+				self.listen.port = _settings.port;
 		}
 		if(typeof(_settings.logins) === 'object')
-			for(const login in _settings.logins){ _store.Server.database[hasher("REDUX_CLUSTER"+login)] = hasher("REDUX_CLUSTER"+_settings.logins[login]); }
+			for(const login in _settings.logins){ self.database[hasher("REDUX_CLUSTER"+login)] = hasher("REDUX_CLUSTER"+_settings.logins[login]); }
 	}
-	_store.Server.sendtoall = function(_message){
+	self.sendtoall = function(_message){
 		if(typeof(_message) === 'object'){
-			for(const uid in _store.Server.sockets){
-				_store.Server.sockets[uid].write(_message);
+			for(const uid in self.sockets){
+				self.sockets[uid].write(_message);
 			}
 		} else {
-			for(const uid in _store.Server.sockets){
-				_store.Server.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:_store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:_store.getState()}});
+			for(const uid in self.sockets){
+				self.sockets[uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:_store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:_store.getState()}});
 			}
 		}
 	}
 	if(_store.mode === "action")	//переопределяю функцию отправки в сокеты (вызывается редьюсером первичного мастера)
-		_store.allsock[_store.Server.uid] = _store.Server;
-	_store.Server.unsubscribe = _store.subscribe(function(){	//подписываю сокет на изменения Redux только в режиме snapshot
+		_store.allsock[self.uid] = self;
+	self.unsubscribe = _store.subscribe(function(){	//подписываю сокет на изменения Redux только в режиме snapshot
 		if(_store.mode === "snapshot")
-			_store.Server.sendtoall();
+			self.sendtoall();
 	});
-	_store.Server.server = Net.createServer((socket) => {
+	self.server = Net.createServer((socket) => {
 		let _i2bTest = replacer(socket.remoteAddress, true);
 		let _uid = generateUID();
 		socket.uid = _uid;
@@ -437,58 +437,58 @@ function createServer(_store, _settings){	//объект создания сер
 			if(typeof(socket.end) === 'function'){
 				socket.end();
 			}
-			if((typeof(socket.uid) !== 'undefined') && (typeof(_store.Server.sockets[socket.uid]) !== 'undefined')){
-				delete _store.Server.sockets[socket.uid];
+			if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+				delete self.sockets[socket.uid];
 			}
 		});
-		if((typeof(_i2bTest) === 'undefined') || (typeof(_store.Server.ip2ban[_i2bTest]) === 'undefined') || ((typeof(_store.Server.ip2ban[_i2bTest]) === 'object') && ((_store.Server.ip2ban[_i2bTest].count < 5) || ((_store.Server.ip2ban[_i2bTest].time+_store.Server.ip2banTimeout) < Date.now())))){
-			_store.Server.parser = new Objectstream.Parser();
-			_store.Server.mbstring = new Stream.Transform({	//обработка мультибайтовых символов без присвоенной кодировки может срабатывать некорректно
+		if((typeof(_i2bTest) === 'undefined') || (typeof(self.ip2ban[_i2bTest]) === 'undefined') || ((typeof(self.ip2ban[_i2bTest]) === 'object') && ((self.ip2ban[_i2bTest].count < 5) || ((self.ip2ban[_i2bTest].time+self.ip2banTimeout) < Date.now())))){
+			self.parser = new Objectstream.Parser();
+			self.mbstring = new Stream.Transform({	//обработка мультибайтовых символов без присвоенной кодировки может срабатывать некорректно
 				transform(_buffer, encoding, callback) {
 					this.push(_buffer)
 					return callback();
 				}
 			});
-			_store.Server.mbstring.setEncoding('utf8');
-			_store.Server.gunzipper = Zlib.createGunzip();	//поток декомпрессии
-			_store.Server.event = Eventstream.map(function (data, next1) {
+			self.mbstring.setEncoding('utf8');
+			self.gunzipper = Zlib.createGunzip();	//поток декомпрессии
+			self.event = Eventstream.map(function (data, next1) {
 				if(data._hash === _store.RCHash){	//проверяю что сообщение привязано к текущему хранилищу
 					switch(data._msg){
 						case 'REDUX_CLUSTER_MSGTOMASTER': 	//получаю диспатчер от клиента
-							if((typeof(socket.uid) !== 'undefined') && (typeof(_store.Server.sockets[socket.uid]) !== 'undefined')){
+							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
 								if(data._action.type === 'REDUX_CLUSTER_SYNC')
 									throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
 								_store.dispatch(data._action);
 							}
 							break;
 						case 'REDUX_CLUSTER_START':	//получаю метку, что клиент запущен
-							if((typeof(socket.uid) !== 'undefined') && (typeof(_store.Server.sockets[socket.uid]) !== 'undefined')){
-								_store.Server.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:_store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:_store.getState()}});
+							if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+								self.sockets[socket.uid].write({_msg:"REDUX_CLUSTER_MSGTOWORKER", _hash:_store.RCHash, _action:{type:"REDUX_CLUSTER_SYNC", payload:_store.getState()}});
 							}
 							break;
 						case 'REDUX_CLUSTER_SOCKET_AUTH':
 							if( (typeof(data._login) !== 'undefined') && 
 								(typeof(data._password) !== 'undefined') &&
-								(typeof(_store.Server.database[data._login]) !== 'undefined') && 
-								(_store.Server.database[data._login] === data._password)){
-								   _store.Server.sockets[socket.uid] = socket;
-								   if((typeof(_i2bTest) === 'string') && (typeof(_store.Server.ip2ban[_i2bTest]) === 'object')) { delete _store.Server.ip2ban[_i2bTest]; } //если логин присутствует в таблице забаненных удаляю
+								(typeof(self.database[data._login]) !== 'undefined') && 
+								(self.database[data._login] === data._password)){
+								   self.sockets[socket.uid] = socket;
+								   if((typeof(_i2bTest) === 'string') && (typeof(self.ip2ban[_i2bTest]) === 'object')) { delete self.ip2ban[_i2bTest]; } //если логин присутствует в таблице забаненных удаляю
 								   socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:_store.RCHash, _value:true});
 								} else {
 									if(typeof(_i2bTest) === 'string') { 
 										let _tempCount = 0;
-										if(typeof(_store.Server.ip2ban[_i2bTest]) === 'object'){ 
-											_tempCount = _store.Server.ip2ban[_i2bTest].count; 
+										if(typeof(self.ip2ban[_i2bTest]) === 'object'){ 
+											_tempCount = self.ip2ban[_i2bTest].count; 
 											if(_tempCount >= 5) { _tempCount = 0; } //по таймауту сбрасываю счетчик попыток
 										}
-										_store.Server.ip2ban[_i2bTest] = {time: Date.now(), count:_tempCount+1}; 
+										self.ip2ban[_i2bTest] = {time: Date.now(), count:_tempCount+1}; 
 									}
 									socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:_store.RCHash, _value:false});
 									if(typeof(socket.end) === 'function'){
 										socket.end();
 									}
-									if((typeof(socket.uid) !== 'undefined') && (typeof(_store.Server.sockets[socket.uid]) !== 'undefined')){
-										delete _store.Server.sockets[socket.uid];
+									if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+										delete self.sockets[socket.uid];
 									}
 								}
 							break;
@@ -496,26 +496,26 @@ function createServer(_store, _settings){	//объект создания сер
 				}
 				next1();
 			});
-			_store.Server.gunzipper.on('error',function(err){
+			self.gunzipper.on('error',function(err){
 				_store.stderr('ReduxCluster.createServer gunzipper error: '+err);
 			});
-			_store.Server.mbstring.on('error',function(err){
+			self.mbstring.on('error',function(err){
 				_store.stderr('ReduxCluster.createServer mbstring error: '+err);
 			});
-			_store.Server.parser.on('error',function(err){
+			self.parser.on('error',function(err){
 				_store.stderr('ReduxCluster.createServer parser error: '+err);
 			});
-			_store.Server.event.on('error',function(err){
+			self.event.on('error',function(err){
 				_store.stderr('ReduxCluster.createServer event error: '+err);
 			});
-			socket.pipe(_store.Server.gunzipper).pipe(_store.Server.mbstring).pipe(_store.Server.parser).pipe(_store.Server.event);
+			socket.pipe(self.gunzipper).pipe(self.mbstring).pipe(self.parser).pipe(self.event);
 		} else {
 			socket.write({_msg:"REDUX_CLUSTER_SOCKET_AUTHSTATE", _hash:_store.RCHash, _value:false, _banned: true});
 			if(typeof(socket.end) === 'function'){
 				socket.end();
 			}
-			if((typeof(socket.uid) !== 'undefined') && (typeof(_store.Server.sockets[socket.uid]) !== 'undefined')){
-				delete _store.Server.sockets[socket.uid];
+			if((typeof(socket.uid) !== 'undefined') && (typeof(self.sockets[socket.uid]) !== 'undefined')){
+				delete self.sockets[socket.uid];
 			}
 		}
 	}).on('listening', function(){	//сервер слушает
@@ -524,62 +524,62 @@ function createServer(_store, _settings){	//объект создания сер
 	}).on('close', function(){	//все коннекты уничтожены
 		_store.connected = false;
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:false});
-		_store.Server.unsubscribe();
-		_store.Server.ip2banGCStop();
-		delete _store.allsock[_store.Server.uid];
-		setTimeout(function(){ new createServer(_store, _settings); }, 10000);
+		self.unsubscribe();
+		self.ip2banGCStop();
+		delete _store.allsock[self.uid];
+		setTimeout(function(){ new createServer(_store, _settings) }, 10000);
 	}).on('error', function(err){ //обработка ошибок сервера
 		_store.stderr('ReduxCluster.createServer socket error: '+err.message);
-		if(typeof(_store.Server.server.close) === 'function')
-			_store.Server.server.close();
+		if(typeof(self.server.close) === 'function')
+			self.server.close();
 	});
-	if(typeof(_store.Server.listen.path) === 'string'){
-		Fs.unlink(_store.Server.listen.path, function(err){
+	if(typeof(self.listen.path) === 'string'){
+		Fs.unlink(self.listen.path, function(err){
 			if(err && err.message.toLowerCase().indexOf("no such file or directory") === -1)
 				_store.stderr('ReduxCluster.createServer socket error: '+err);
-			_store.Server.server.listen(_store.Server.listen);
+			self.server.listen(self.listen);
 		});
 	} else {
-		_store.Server.server.listen(_store.Server.listen);
+		self.server.listen(self.listen);
 	}
 }
 
 function createClient(_store, _settings){	//объект создания клиента
-	_store.Client = this;
-	_store.Client.listen = {port:10001};	//дефолтные настройки
+	let self = this;
+	self.listen = {port:10001};	//дефолтные настройки
 	if(typeof(_settings) === 'object'){	//переопределяю конфиг
 		if(typeof(_settings.path) === 'string'){
 			switch(Os.platform ()){
 				case 'win32':
-					_store.Client.listen = {path:Path.join('\\\\?\\pipe', _settings.path)};
+					self.listen = {path:Path.join('\\\\?\\pipe', _settings.path)};
 					break;
 				default:
-					_store.Client.listen = {path:Path.join(_settings.path)};
+					self.listen = {path:Path.join(_settings.path)};
 					break;
 			}
 		} else{
 			if(typeof(_settings.host) === 'string')
-				_store.Client.listen.host = _settings.host;
+				self.listen.host = _settings.host;
 			if(typeof(_settings.port) === 'number')
-				_store.Client.listen.port = _settings.port;
+				self.listen.port = _settings.port;
 		}
 		if(typeof(_settings.login) === 'string')
-			_store.Client.login = hasher("REDUX_CLUSTER"+_settings.login);
+			self.login = hasher("REDUX_CLUSTER"+_settings.login);
 		if(typeof(_settings.password) === 'string')
-			_store.Client.password = hasher("REDUX_CLUSTER"+_settings.password);
+			self.password = hasher("REDUX_CLUSTER"+_settings.password);
 	}
-	_store.Client.client = new Net.createConnection(_store.Client.listen);
-	_store.Client.parser = new Objectstream.Parser();
-	_store.Client.mbstring = new Stream.Transform({	//обработка мультибайтовых символов без присвоенной кодировки может срабатывать некорректно
+	self.client = new Net.createConnection(self.listen);
+	self.parser = new Objectstream.Parser();
+	self.mbstring = new Stream.Transform({	//обработка мультибайтовых символов без присвоенной кодировки может срабатывать некорректно
 		transform(_buffer, encoding, callback) {
 			this.push(_buffer)
 			return callback();
 		}
 	});
-	_store.Client.mbstring.setEncoding('utf8');
-	_store.Client.gunzipper = Zlib.createGunzip();	//поток декомпрессии
-	_store.Client.event = Eventstream.map(function (data, next1) {
-		if(!_store.Client.client.destroyed){
+	self.mbstring.setEncoding('utf8');
+	self.gunzipper = Zlib.createGunzip();	//поток декомпрессии
+	self.event = Eventstream.map(function (data, next1) {
+		if(!self.client.destroyed){
 			if(data._hash === _store.RCHash){
 				switch(data._msg){
 					case 'REDUX_CLUSTER_MSGTOWORKER':
@@ -587,12 +587,12 @@ function createClient(_store, _settings){	//объект создания кли
 						break;
 					case 'REDUX_CLUSTER_SOCKET_AUTHSTATE':
 						if(data._value === true){
-							_store.Client.client.write({_msg:'REDUX_CLUSTER_START', _hash:_store.RCHash});	//синхронизирую хранилище
+							self.client.write({_msg:'REDUX_CLUSTER_START', _hash:_store.RCHash});	//синхронизирую хранилище
 						}else{
 							if(data._banned)
-								_store.Client.client.destroy(new Error('your ip is locked for 3 hours'));
+								self.client.destroy(new Error('your ip is locked for 3 hours'));
 							else
-								_store.Client.client.destroy(new Error('authorization failed'));
+								self.client.destroy(new Error('authorization failed'));
 						}
 						break;
 				}
@@ -600,25 +600,25 @@ function createClient(_store, _settings){	//объект создания кли
 		}
 		next1();
 	});
-	_store.Client.gunzipper.on('error',function(err){
+	self.gunzipper.on('error',function(err){
 		_store.stderr('ReduxCluster.createClient gunzipper error: '+err);
 	});
-	_store.Client.mbstring.on('error',function(err){
+	self.mbstring.on('error',function(err){
 		_store.stderr('ReduxCluster.createClient mbstring error: '+err);
 	});
-	_store.Client.parser.on('error',function(err){
+	self.parser.on('error',function(err){
 		_store.stderr('ReduxCluster.createClient parser error: '+err);
 	});
-	_store.Client.event.on('error',function(err){
+	self.event.on('error',function(err){
 		_store.stderr('ReduxCluster.createClient event error: '+err);
 	});
-	_store.Client.client.on('connect', function(){
+	self.client.on('connect', function(){
 		_store.connected = true;
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:true});
-		_store.Client.client.writeNEW = _store.Client.client.write;	//переопределяю write  (объектный режим + сжатие)
-		_store.Client.client.write = function(_data){
+		self.client.writeNEW = self.client.write;	//переопределяю write  (объектный режим + сжатие)
+		self.client.write = function(_data){
 			try {
-				return _store.Client.client.writeNEW(Zlib.gzipSync(Buffer.from(JSON.stringify(_data))));
+				return self.client.writeNEW(Zlib.gzipSync(Buffer.from(JSON.stringify(_data))));
 			} catch(err){
 				_store.stderr('ReduxCluster.createClient write error: '+err.message);
 				return;
@@ -628,16 +628,16 @@ function createClient(_store, _settings){	//объект создания кли
 			_store.dispatchNEW = _store.dispatch;
 		}
 		_store.dispatch = function(_data){
-			_store.Client.client.write({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:_store.RCHash, _action:_data});
+			self.client.write({_msg:'REDUX_CLUSTER_MSGTOMASTER', _hash:_store.RCHash, _action:_data});
 		}
-		_store.Client.client.write({_msg:'REDUX_CLUSTER_SOCKET_AUTH', _hash:_store.RCHash, _login:_store.Client.login, _password:_store.Client.password});	//авторизация в сокете
+		self.client.write({_msg:'REDUX_CLUSTER_SOCKET_AUTH', _hash:_store.RCHash, _login:self.login, _password:self.password});	//авторизация в сокете
 	}).on('close', function(){
 		_store.connected = false;
 		_store.sendtoall({_msg:"REDUX_CLUSTER_CONNSTATUS", _hash:_store.RCHash, _connected:false});
-		setTimeout(function(){ new createClient(_store, _settings); }, 250);
+		setTimeout(function(){ new createClient(_store, _settings) }, 250);
 	}).on('error', function(err){ //обработка ошибок клиента
 		_store.stderr('ReduxCluster.createClient client error: '+err.message);
-	}).pipe(_store.Client.gunzipper).pipe(_store.Client.mbstring).pipe(_store.Client.parser).pipe(_store.Client.event);
+	}).pipe(self.gunzipper).pipe(self.mbstring).pipe(self.parser).pipe(self.event);
 }
 
 //генерация uid
@@ -674,3 +674,4 @@ ReduxClusterModule.functions = {
 };
 
 module.exports = ReduxClusterModule;
+	
