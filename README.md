@@ -461,6 +461,10 @@ if(Cluster.isMaster){
 	}, 22000+(Cluster.worker.id*1500), i);
 }
 ```
+
+## Warning
+
+Encryption (crypto.createCipheriv) and Decryption (crypto.createDecipheriv) features have been marked as deprecated in Node v12. I updated these functions in version 1.7.0, but if you used a backup of the storage to disk, you will not be able to download it.
   
 ## LICENSE  
   
