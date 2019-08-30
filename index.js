@@ -38,9 +38,9 @@ var performance = {now:function(){
 	}
 }};
 	
-function hasher(data){	//хэширование редьюсера
+function hasher(data, algorithm = 'sha1'){	//хэширование редьюсера
 	if(typeof(data) === 'string'){
-		const hash = Crypto.createHash('sha1');
+		const hash = Crypto.createHash(algorithm);
 		hash.update(data);
 		return(hash.digest('hex'));
 	} else 
@@ -48,14 +48,14 @@ function hasher(data){	//хэширование редьюсера
 }
 
 function encrypter(data, pass){	//енкриптор
-	const cipher = Crypto.createCipher('aes192', hasher(pass));
+	const cipher = Crypto.createCipheriv('aes-256-ctr', hasher(pass, "sha256").toString('hex').slice(0, 32), hasher("gRy56$#hEUjs*4@h", "md5").toString('hex').slice(0, 16));
 	let encrypted = cipher.update(data, 'utf8', 'hex');
 	encrypted += cipher.final('hex');
 	return encrypted;
 }
 
 function decrypter(data, pass){	//декриптор
-	const cipher = Crypto.createDecipher('aes192', hasher(pass));
+	const cipher = Crypto.createDecipheriv('aes-256-ctr', hasher(pass, "sha256").toString('hex').slice(0, 32), hasher("gRy56$#hEUjs*4@h", "md5").toString('hex').slice(0, 16));
 	let decrypted = cipher.update(data, 'hex', 'utf8');
 	decrypted += cipher.final('utf8');
 	return decrypted;
