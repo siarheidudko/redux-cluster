@@ -1,6 +1,6 @@
 {
   "name": "redux-cluster",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Cluster module for redux synchronizes all redux store in cluster processes.",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
-    "@sergdudko/objectstream": ">=1.5.0",
+    "@sergdudko/objectstream": "^1.5.0",
     "cluster": "^0.7.7",
     "crypto": "^1.0.1",
     "event-stream": "^3.3.4",
