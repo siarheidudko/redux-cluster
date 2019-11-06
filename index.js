@@ -28,11 +28,12 @@ Object.assign(ReduxClusterModule, Redux);	//копирую свойства Redu
 var reducers = {}; //список редьюсеров (хэш собирается по имени редьюсера для совместимости различных ОС, т.к. hasher(<function>.toString()) для разных ос дает разные суммы)
 
 //эмулирую performance.now()
-var hrtimeproc = process.hrtime();
+const hrtimeproc = process.hrtime.bigint();
 var performance = {now:function(){
 	try{
-		const now = parseFloat(process.hrtime(hrtimeproc).toString().replace(/[,]/g,"."));
-		return now;
+		let hrtimeprocnew = process.hrtime.bigint();
+		let my = [parseInt(((hrtimeprocnew - hrtimeproc) / 1000000n).toString()), parseInt(((hrtimeprocnew - hrtimeproc) % 1000000n).toString())];
+		return parseFloat(my[0]+"."+my[1]);
 	} catch(err){
 		return undefined;
 	}
