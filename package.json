@@ -1,10 +1,68 @@
 {
   "name": "redux-cluster",
-  "version": "1.10.0",
-  "description": "Cluster module for redux synchronizes all redux store in cluster processes.",
-  "main": "index.js",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "TypeScript cluster module for Redux that synchronizes Redux stores across cluster processes via IPC and TCP sockets",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist/esm/**/*",
+    "dist/cjs/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "funding": [
+    {
+      "type": "individual",
+      "url": "http://dudko.dev/donate"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://www.buymeacoffee.com/dudko.dev"
+    },
+    {
+      "type": "paypal",
+      "url": "https://paypal.me/dudkodev"
+    },
+    {
+      "type": "patreon",
+      "url": "https://patreon.com/dudko_dev"
+    }
+  ],
   "scripts": {
-    "test": "node test.js"
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:pkg",
+    "build:esm": "tsc",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:pkg": "./scripts/create-package-files.sh",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "npm run test:all",
+    "test:all": "node --test --import tsx tests/unit.test.ts tests/error.test.ts tests/transport.test.ts",
+    "test:unit": "node --test --import tsx tests/unit.test.ts",
+    "test:transport": "node --test --import tsx tests/transport.test.ts",
+    "test:cluster": "node --test --import tsx tests/cluster.test.ts",
+    "test:integration": "node --test --import tsx tests/integration.test.ts",
+    "test:error": "node --test --import tsx tests/error.test.ts",
+    "test:integration-full": "./integration/run-tests.sh",
+    "lint": "eslint src/**/*.ts tests/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts tests/**/*.ts --fix",
+    "example:basic": "node examples/basic.js",
+    "example:server": "node examples/server.js",
+    "example:client": "node examples/client.js"
   },
   "repository": {
     "type": "git",
@@ -14,21 +72,44 @@
     "redux",
     "cluster",
     "ipc",
-    "process"
+    "process",
+    "typescript",
+    "synchronization",
+    "distributed",
+    "tcp",
+    "socket"
   ],
-  "author": "Siarhei Dudko",
+  "author": {
+    "name": "Siarhei Dudko",
+    "email": "siarhei@dudko.dev",
+    "url": "https://dudko.dev"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/siarheidudko/redux-cluster/issues"
   },
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
-    "@sergdudko/objectstream": "^1.6.0",
-    "event-stream": "^3.3.5",
-    "lodash": "^4.17.15",
-    "redux": "^4.0.4"
+    "@sergdudko/objectstream": "^3.2.26",
+    "protoobject": "^1.1.30",
+    "redux": "^5.0.1"
   },
   "devDependencies": {
-    "colors": "^1.4.0"
+    "@types/node": "^20.11.17",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "eslint": "^9.35.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "overrides": {
+    "debug": ">=4.3.7"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,7 +1,79 @@
+# Source files and development artifacts
+src/
+tests/
+integration/
+examples/
+temp/
+img/
+schemes/
+
+# Development configuration
 .gitignore
-.tmp.drivedownload
-node_modules
-img
-schemes
+.eslintrc.*
+eslint.config.js
+tsconfig*.json
+jest.config.js
+*.test.*
+*.spec.*
+
+# Build scripts and development tools
+scripts/
+*.sh
+
+# Documentation (development)
+README-old.md
+CLEANUP_SUMMARY.md
+STATUS_REPORT.md
+
+# Test files and artifacts
+test*.js
+test*.ts
+test*.cjs
+*-test.*
+*-spec.*
+coverage/
+.nyc_output/
+
+# Temporary and backup files
+.tmp/
+.tmp.drivedownload/
+*.tmp
+*.temp
 test1.backup
 test2.backup
+*-old.*
+*-backup.*
+
+# OS and editor files
+.DS_Store
+.DS_Store?
+._*
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment and runtime
+.env*
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Git files
+.git/
+.gitattributes
+
+# Node modules
+node_modules/
+
+# TypeScript build info
+*.tsbuildinfo

@@ -1,0 +1,24 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (production only for smaller image)
+RUN npm ci --only=production
+
+# Copy built distribution files
+COPY dist/ ./dist/
+
+# Copy integration test files
+COPY integration/test-runner.cjs ./integration/
+
+# Create temp directory for file sockets
+RUN mkdir -p /tmp/redux-cluster
+
+# Expose the default port
+EXPOSE 13000
+
+# Default command
+CMD ["node", "integration/test-runner.cjs"]

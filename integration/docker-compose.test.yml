@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  tcp-server:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=server
+      - SERVER_PORT=13000
+    ports:
+      - "13000:13000"
+    command: ["node", "integration/test-runner.cjs"]
+    networks:
+      - redux-test
+
+  tcp-client-1:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=client
+      - SERVER_HOST=tcp-server
+      - SERVER_PORT=13000
+      - CLIENT_ID=client-1
+    depends_on:
+      - tcp-server
+    command: ["node", "integration/test-runner.cjs"]
+    networks:
+      - redux-test
+
+  tcp-client-2:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=client
+      - SERVER_HOST=tcp-server
+      - SERVER_PORT=13000
+      - CLIENT_ID=client-2
+    depends_on:
+      - tcp-server
+    command: ["node", "integration/test-runner.cjs"]
+    networks:
+      - redux-test
+
+networks:
+  redux-test:
+    driver: bridge
