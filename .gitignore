@@ -9,6 +9,7 @@ yarn-error.log*
 dist/
 lib/
 build/
+tmp
 
 # TypeScript
 *.tsbuildinfo
