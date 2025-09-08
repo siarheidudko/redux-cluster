@@ -25,6 +25,7 @@ export class ClusterServer {
   private readonly ip2banGC: NodeJS.Timeout;
   private server: net.Server;
   private unsubscribe?: () => void;
+  private shouldAutoRestart: boolean = true;
 
   constructor(
     private store: ReduxClusterStore,
@@ -95,9 +96,11 @@ export class ClusterServer {
       this.cleanup();
 
       // Auto-restart server after 10 seconds
-      setTimeout(() => {
-        new ClusterServer(this.store, this.settings);
-      }, 10000);
+      if (this.shouldAutoRestart) {
+        setTimeout(() => {
+          new ClusterServer(this.store, this.settings);
+        }, 10000);
+      }
     });
 
     this.server.on("error", (err) => {
@@ -183,12 +186,26 @@ export class ClusterServer {
   }
 
   private rejectConnection(socket: ClusterSocket, banned = false): void {
-    socket.write({
+    // Create rejection message
+    const rejectionMessage = {
       _msg: MessageType.SOCKET_AUTH_STATE,
       _hash: this.store.RCHash,
       _value: false,
       ...(banned && { _banned: true }),
-    } as any);
+    };
+
+    // Manually serialize and compress since custom write is not set up yet
+    try {
+      const compressed = zlib.gzipSync(
+        Buffer.from(JSON.stringify(rejectionMessage))
+      );
+      // Use the native write method directly, not the overridden one
+      const originalWrite =
+        (socket as any).writeNEW || socket.write.bind(socket);
+      originalWrite(compressed);
+    } catch (err: any) {
+      this.store.stderr(`ReduxCluster.rejectConnection error: ${err.message}`);
+    }
 
     this.closeSocket(socket);
   }
@@ -290,6 +307,8 @@ export class ClusterServer {
           if (data._action.type === MessageType.SYNC) {
             throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
           }
+          // Apply action to server state
+          // This will automatically trigger sendActionsToNodes via reducer
           this.store.dispatch(data._action);
         }
         break;
@@ -324,6 +343,19 @@ export class ClusterServer {
   ): void {
     const { _login, _password } = data;
 
+    // If no authentication is configured (empty database), allow all connections
+    if (Object.keys(this.database).length === 0) {
+      // No authentication required
+      this.sockets[socket.uid] = socket;
+
+      socket.write({
+        _msg: MessageType.SOCKET_AUTH_STATE,
+        _hash: this.store.RCHash,
+        _value: true,
+      });
+      return;
+    }
+
     if (
       typeof _login !== "undefined" &&
       typeof _password !== "undefined" &&
@@ -338,6 +370,7 @@ export class ClusterServer {
         delete this.ip2ban[clientIP];
       }
 
+      // Use the custom write method that should be set up by now
       socket.write({
         _msg: MessageType.SOCKET_AUTH_STATE,
         _hash: this.store.RCHash,
@@ -349,6 +382,7 @@ export class ClusterServer {
         this.recordFailedLogin(clientIP);
       }
 
+      // Use the custom write method that should be set up by now
       socket.write({
         _msg: MessageType.SOCKET_AUTH_STATE,
         _hash: this.store.RCHash,
@@ -420,5 +454,55 @@ export class ClusterServer {
     }
     this.ip2banGCStop();
     delete (this.store as any).allsock[this.uid];
+  }
+
+  public close(): Promise<void> {
+    return new Promise((resolve) => {
+      // Prevent the automatic restart handler from creating a new server
+      this.shouldAutoRestart = false;
+
+      // Close all connected sockets first
+      Object.values(this.sockets).forEach((socket) => {
+        if (socket) {
+          try {
+            this.closeSocket(socket);
+          } catch {
+            // ignore
+          }
+        }
+      });
+
+      // Clear sockets registry
+      Object.keys(this.sockets).forEach((key) => {
+        delete this.sockets[key];
+      });
+
+      // Stop IP ban garbage collector
+      if (this.ip2banGC) {
+        clearInterval(this.ip2banGC);
+      }
+
+      // Unsubscribe from store updates
+      if (this.unsubscribe) {
+        try {
+          this.unsubscribe();
+        } catch {
+          // ignore
+        }
+        this.unsubscribe = undefined;
+      }
+
+      // Finally close the server and resolve when closed
+      if (this.server && typeof this.server.close === "function") {
+        try {
+          this.server.close(() => resolve());
+        } catch {
+          // fallback resolve
+          resolve();
+        }
+      } else {
+        resolve();
+      }
+    });
   }
 }

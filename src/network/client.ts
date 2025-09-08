@@ -13,6 +13,8 @@ export class ClusterClient {
 
   private client: net.Socket;
   private listenOptions: any;
+  private shouldReconnect: boolean = true;
+  private reconnectTimeout?: NodeJS.Timeout;
 
   constructor(
     private store: ReduxClusterStore,
@@ -100,11 +102,12 @@ export class ClusterClient {
       }
     };
 
-    // Override store dispatch to send to master
+    // Save original dispatch for local state updates
     if (typeof (this.store as any).dispatchNEW !== "function") {
       (this.store as any).dispatchNEW = this.store.dispatch;
     }
 
+    // Override dispatch to send actions to server
     (this.store as any).dispatch = (action: any) => {
       (this.client as any).write({
         _msg: MessageType.MSG_TO_MASTER,
@@ -130,10 +133,12 @@ export class ClusterClient {
       _connected: false,
     });
 
-    // Reconnect after 250ms
-    setTimeout(() => {
-      new ClusterClient(this.store, this.settings);
-    }, 250);
+    // Reconnect after 250ms only if reconnection is enabled
+    if (this.shouldReconnect) {
+      this.reconnectTimeout = setTimeout(() => {
+        new ClusterClient(this.store, this.settings);
+      }, 250);
+    }
   }
 
   private setupPipeline(): void {
@@ -154,6 +159,7 @@ export class ClusterClient {
 
     // Simple JSON parser
     const parser = new stream.Transform({
+      objectMode: true,
       transform(
         chunk: any,
         encoding: string,
@@ -162,15 +168,15 @@ export class ClusterClient {
         try {
           const data = JSON.parse(chunk.toString());
           this.push(data);
+          callback();
         } catch {
-          // Invalid JSON, ignore
+          callback(); // Invalid JSON, ignore but continue
         }
-        callback();
       },
-      objectMode: true,
     });
 
     const eventHandler = new stream.Writable({
+      objectMode: true,
       write: (
         data: any,
         encoding: string,
@@ -179,7 +185,6 @@ export class ClusterClient {
         this.handleServerMessage(data);
         callback();
       },
-      objectMode: true,
     });
 
     // Setup error handlers
@@ -202,8 +207,18 @@ export class ClusterClient {
 
     switch (data._msg) {
       case MessageType.MSG_TO_WORKER:
+        // Always use dispatchNEW (original dispatch) for local state updates
+        // because the regular dispatch is overridden to send to server
         if ((this.store as any).dispatchNEW) {
-          (this.store as any).dispatchNEW(data._action);
+          // Mark SYNC actions as internal
+          let actionToDispatch = data._action;
+          if (actionToDispatch.type === 'REDUX_CLUSTER_SYNC') {
+            actionToDispatch = { ...actionToDispatch, _internal: true };
+          }
+          
+          (this.store as any).dispatchNEW(actionToDispatch);
+        } else {
+          this.store.stderr("dispatchNEW method not available");
         }
         break;
 
@@ -231,5 +246,25 @@ export class ClusterClient {
 
   private connectToServer(): void {
     this.client.connect(this.listenOptions);
+  }
+
+  public disconnect(): void {
+    this.shouldReconnect = false;
+    
+    // Clear reconnection timeout if it exists
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
+    
+    // Remove all event listeners
+    if (this.client) {
+      this.client.removeAllListeners();
+      
+      // Destroy the socket
+      if (!this.client.destroyed) {
+        this.client.destroy();
+      }
+    }
   }
 }

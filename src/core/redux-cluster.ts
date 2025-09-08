@@ -1,7 +1,7 @@
 import { createStore, Store, Reducer, Action } from "redux";
 import cluster from "cluster";
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
+import { join } from "path";
 import {
   hasher,
   universalClone,
@@ -86,13 +86,13 @@ export class ReduxCluster<S = any, A extends Action = Action>
       let packagePath: string;
       try {
         // Try CommonJS approach first (__dirname available)
-        packagePath = join(__dirname, '../../package.json');
+        packagePath = join(__dirname, "../../package.json");
       } catch {
         // Fallback - use relative path from process.cwd()
-        packagePath = join(process.cwd(), 'package.json');
+        packagePath = join(process.cwd(), "package.json");
       }
-      
-      const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+
+      const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
       this.version = packageJson.version;
       this.homepage = packageJson.homepage;
     } catch {
@@ -220,9 +220,11 @@ export class ReduxCluster<S = any, A extends Action = Action>
   }
 
   private initializeClusterRole(): void {
+    // Assign "master" role only to primary process in cluster
     if (cluster.isPrimary) {
       this.initializeMaster();
     } else {
+      // Assign "worker" role to non-master processes
       this.initializeWorker();
     }
   }
@@ -442,12 +444,6 @@ export class ReduxCluster<S = any, A extends Action = Action>
 
     if (!this.role.includes("client")) {
       this.role.push("client");
-    }
-
-    // Remove worker role if present
-    const workerIndex = this.role.indexOf("worker");
-    if (workerIndex !== -1) {
-      this.role.splice(workerIndex, 1);
     }
 
     this.connected = false;

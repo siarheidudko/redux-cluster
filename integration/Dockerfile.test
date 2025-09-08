@@ -1,32 +1,24 @@
 FROM node:18-alpine
 
-# Install curl for health checks
-RUN apk add --no-cache curl
-
-# Define build argument for port
-ARG PORT=3001
-
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (production only for smaller image)
 RUN npm ci --only=production
 
-# Copy built files
+# Copy built distribution files
 COPY dist/ ./dist/
 
 # Copy integration test files
-COPY integration/test-runner.cjs ./integration/
-COPY integration/scenarios/ ./integration/scenarios/
+COPY integration/new-test-runner.cjs ./integration/
 
 # Create temp directory for file sockets
 RUN mkdir -p /tmp/redux-cluster
 
-# Set PORT environment variable from ARG
-ENV PORT=${PORT}
+# Expose the default port
+EXPOSE 13000
 
-EXPOSE ${PORT}
-
-CMD ["node", "integration/test-runner.cjs"]
+# Default command
+CMD ["node", "integration/new-test-runner.cjs"]
