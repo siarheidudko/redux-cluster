@@ -20,9 +20,9 @@ const counterReducer = (state = { counter: 0 }, action: any) => {
   }
 };
 
-test('TCP Transport synchronization', { timeout: 10000 }, async (_t) => {
+test("TCP Transport synchronization", { timeout: 10000 }, async (_t) => {
   let masterServer, slaveClient;
-  
+
   try {
     // Create master instance with server
     const master = createStore(counterReducer);
@@ -32,26 +32,33 @@ test('TCP Transport synchronization', { timeout: 10000 }, async (_t) => {
     masterServer = master.createServer({ port: 8081 });
 
     // Wait for server to start
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Connect slave as client to master
-    slaveClient = slave.createClient({ 
-      host: 'localhost', 
-      port: 8081 
+    slaveClient = slave.createClient({
+      host: "localhost",
+      port: 8081,
     });
 
     // Wait for connections
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Test synchronization - slave sends action to master
-    slave.dispatch({ type: 'INCREMENT' });
-    
+    slave.dispatch({ type: "INCREMENT" });
+
     // Wait for synchronization
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    assert.equal(master.getState().counter, 1, 'Master should have incremented counter');
-    assert.equal(slave.getState().counter, 1, 'Slave should have synchronized counter');
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    assert.equal(
+      master.getState().counter,
+      1,
+      "Master should have incremented counter"
+    );
+    assert.equal(
+      slave.getState().counter,
+      1,
+      "Slave should have synchronized counter"
+    );
   } finally {
     // Clean up connections
     if (slaveClient) {
@@ -60,59 +67,226 @@ test('TCP Transport synchronization', { timeout: 10000 }, async (_t) => {
     if (masterServer) {
       masterServer.close();
     }
-    
+
     // Wait for cleanup
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 });
 
-test('File Socket Transport synchronization', { timeout: 10000 }, async (_t) => {
-  let masterServer, slaveClient;
-  const socketPath = path.join(os.tmpdir(), `redux-cluster-test-${process.pid}-${Date.now()}.sock`);
-  
-  try {
-    // Create master instance with server
-    const master = createStore(counterReducer);
-    const slave = createStore(counterReducer);
+test(
+  "File Socket Transport synchronization",
+  { timeout: 10000 },
+  async (_t) => {
+    let masterServer, slaveClient;
+    const socketPath = path.join(
+      os.tmpdir(),
+      `redux-cluster-test-${process.pid}-${Date.now()}.sock`
+    );
 
-    // Start master server on file socket
-    masterServer = master.createServer({ path: socketPath });
+    try {
+      // Create master instance with server
+      const master = createStore(counterReducer);
+      const slave = createStore(counterReducer);
 
-    // Wait for server to start
-    await new Promise(resolve => setTimeout(resolve, 500));
+      // Start master server on file socket
+      masterServer = master.createServer({ path: socketPath });
 
-    // Connect slave as client to master
-    slaveClient = slave.createClient({ path: socketPath });
+      // Wait for server to start
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // Wait for connection
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      // Connect slave as client to master
+      slaveClient = slave.createClient({ path: socketPath });
 
-    // Test synchronization
-    slave.dispatch({ type: 'INCREMENT' });
-    
-    // Wait for synchronization
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    assert.equal(master.getState().counter, 1, 'Master should have incremented counter');
-    assert.equal(slave.getState().counter, 1, 'Slave should have synchronized counter');
-    
-  } finally {
-    // Clean up connections
-    if (slaveClient) {
-      try { slaveClient.disconnect(); } catch { /* ignore */ }
+      // Wait for connection
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Test synchronization
+      slave.dispatch({ type: "INCREMENT" });
+
+      // Wait for synchronization
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      assert.equal(
+        master.getState().counter,
+        1,
+        "Master should have incremented counter"
+      );
+      assert.equal(
+        slave.getState().counter,
+        1,
+        "Slave should have synchronized counter"
+      );
+    } finally {
+      // Clean up connections
+      if (slaveClient) {
+        try {
+          slaveClient.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (masterServer) {
+        try {
+          await masterServer.close();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Clean up socket file
+      try {
+        await fs.unlink(socketPath);
+      } catch {
+        // Ignore if file doesn't exist
+      }
+
+      // Wait a moment for OS to release resources
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    if (masterServer) {
-      try { await masterServer.close(); } catch { /* ignore */ }
+  }
+);
+
+test(
+  "TCP Transport synchronization (snapshot mode)",
+  { timeout: 10000 },
+  async (_t) => {
+    let masterServer, slaveClient;
+
+    try {
+      // Create master instance with server in snapshot mode
+      const master = createStore(counterReducer, { mode: "snapshot" });
+      const slave = createStore(counterReducer, { mode: "snapshot" });
+
+      // Start master server
+      masterServer = master.createServer({ port: 8082 });
+
+      // Wait for server to start
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Connect slave as client to master
+      slaveClient = slave.createClient({
+        host: "localhost",
+        port: 8082,
+      });
+
+      // Wait for connections
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Test synchronization - slave sends action to master
+      slave.dispatch({ type: "INCREMENT" });
+
+      // Wait for synchronization
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      assert.equal(
+        master.getState().counter,
+        1,
+        "Master should have incremented counter (snapshot mode)"
+      );
+      assert.equal(
+        slave.getState().counter,
+        1,
+        "Slave should have synchronized counter (snapshot mode)"
+      );
+    } finally {
+      // Clean up connections
+      if (slaveClient) {
+        try {
+          slaveClient.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (masterServer) {
+        try {
+          await masterServer.close();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Wait a moment for OS to release resources
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    
-    // Clean up socket file
+  }
+);
+
+test(
+  "File Socket Transport synchronization (snapshot mode)",
+  { timeout: 10000 },
+  async (_t) => {
+    const socketPath = path.join(
+      os.tmpdir(),
+      "redux-cluster-test-snapshot.sock"
+    );
+    let masterServer, slaveClient;
+
+    // Clean up existing socket file
     try {
       await fs.unlink(socketPath);
     } catch {
       // Ignore if file doesn't exist
     }
-    
-    // Wait a moment for OS to release resources
-    await new Promise(resolve => setTimeout(resolve, 200));
+
+    try {
+      // Create master instance with server in snapshot mode
+      const master = createStore(counterReducer, { mode: "snapshot" });
+      const slave = createStore(counterReducer, { mode: "snapshot" });
+
+      // Start master server
+      masterServer = master.createServer({ path: socketPath });
+
+      // Wait for server to start
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Connect slave as client to master
+      slaveClient = slave.createClient({ path: socketPath });
+
+      // Wait for connection
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Test synchronization
+      slave.dispatch({ type: "INCREMENT" });
+
+      // Wait for synchronization
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      assert.equal(
+        master.getState().counter,
+        1,
+        "Master should have incremented counter (file socket snapshot mode)"
+      );
+      assert.equal(
+        slave.getState().counter,
+        1,
+        "Slave should have synchronized counter (file socket snapshot mode)"
+      );
+    } finally {
+      // Clean up connections
+      if (slaveClient) {
+        try {
+          slaveClient.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (masterServer) {
+        try {
+          await masterServer.close();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Clean up socket file
+      try {
+        await fs.unlink(socketPath);
+      } catch {
+        // Ignore if file doesn't exist
+      }
+
+      // Wait a moment for OS to release resources
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
   }
-});
+);

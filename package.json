@@ -24,6 +24,24 @@
     "README.md",
     "LICENSE"
   ],
+  "funding": [
+    {
+      "type": "individual",
+      "url": "http://dudko.dev/donate"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://www.buymeacoffee.com/dudko.dev"
+    },
+    {
+      "type": "paypal",
+      "url": "https://paypal.me/dudkodev"
+    },
+    {
+      "type": "patreon",
+      "url": "https://patreon.com/dudko_dev"
+    }
+  ],
   "scripts": {
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:pkg",
     "build:esm": "tsc",
@@ -61,7 +79,11 @@
     "tcp",
     "socket"
   ],
-  "author": "Siarhei Dudko",
+  "author": {
+    "name": "Siarhei Dudko",
+    "email": "siarhei@dudko.dev",
+    "url": "https://dudko.dev"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/siarheidudko/redux-cluster/issues"

@@ -5,11 +5,8 @@ set -e
 echo "🚀 Starting Redux Cluster Integration Tests (Clean Version)"
 
 # Check if we're in the right directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-if [ ! -f "test-runner.cjs" ]; then
-    echo "❌ Cannot find test-runner.cjs in integration directory"
+if [ ! -f "new-test-runner.cjs" ]; then
+    echo "❌ Must run from integration directory"
     exit 1
 fi
 
@@ -24,7 +21,7 @@ echo "🧪 Running Local Tests..."
 
 # Test 1: File Socket test (local)
 echo "📁 Running File Socket test..."
-if TEST_MODE=file-socket node test-runner.cjs; then
+if TEST_MODE=file-socket node new-test-runner.cjs; then
     echo "✅ File Socket test passed"
 else
     echo "❌ File Socket test failed"
@@ -58,24 +55,24 @@ echo "🐳 Using $DOCKER_COMPOSE for integration tests..."
 
 # Cleanup any existing containers
 echo "🧹 Cleaning up existing containers..."
-$DOCKER_COMPOSE -f docker-compose.test.yml down --remove-orphans 2>/dev/null || true
+$DOCKER_COMPOSE -f docker-compose-new.yml down --remove-orphans 2>/dev/null || true
 
 # Build test images
 echo "🏗️  Building test images..."
-$DOCKER_COMPOSE -f docker-compose.test.yml build
+$DOCKER_COMPOSE -f docker-compose-new.yml build
 
 # Test 2: TCP server/client tests (Docker)
 echo "🌐 Running TCP Server/Client tests..."
 
 # Start containers and capture exit codes
-$DOCKER_COMPOSE -f docker-compose.test.yml up --abort-on-container-exit &
+$DOCKER_COMPOSE -f docker-compose-new.yml up --abort-on-container-exit &
 DOCKER_PID=$!
 
 # Wait for test completion (maximum 30 seconds)
 sleep 30
 
 # Clean up
-$DOCKER_COMPOSE -f docker-compose.test.yml down 2>/dev/null || true
+$DOCKER_COMPOSE -f docker-compose-new.yml down 2>/dev/null || true
 
 # Check if Docker test completed successfully
 if wait $DOCKER_PID 2>/dev/null; then

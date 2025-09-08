@@ -12,7 +12,7 @@ RUN npm ci --only=production
 COPY dist/ ./dist/
 
 # Copy integration test files
-COPY integration/new-test-runner.cjs ./integration/
+COPY integration/test-runner.cjs ./integration/
 
 # Create temp directory for file sockets
 RUN mkdir -p /tmp/redux-cluster
@@ -21,4 +21,4 @@ RUN mkdir -p /tmp/redux-cluster
 EXPOSE 13000
 
 # Default command
-CMD ["node", "integration/new-test-runner.cjs"]
+CMD ["node", "integration/test-runner.cjs"]

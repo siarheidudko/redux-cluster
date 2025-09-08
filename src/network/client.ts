@@ -212,10 +212,10 @@ export class ClusterClient {
         if ((this.store as any).dispatchNEW) {
           // Mark SYNC actions as internal
           let actionToDispatch = data._action;
-          if (actionToDispatch.type === 'REDUX_CLUSTER_SYNC') {
+          if (actionToDispatch.type === "REDUX_CLUSTER_SYNC") {
             actionToDispatch = { ...actionToDispatch, _internal: true };
           }
-          
+
           (this.store as any).dispatchNEW(actionToDispatch);
         } else {
           this.store.stderr("dispatchNEW method not available");
@@ -250,17 +250,17 @@ export class ClusterClient {
 
   public disconnect(): void {
     this.shouldReconnect = false;
-    
+
     // Clear reconnection timeout if it exists
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = undefined;
     }
-    
+
     // Remove all event listeners
     if (this.client) {
       this.client.removeAllListeners();
-      
+
       // Destroy the socket
       if (!this.client.destroyed) {
         this.client.destroy();
