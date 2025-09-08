@@ -158,9 +158,9 @@ export class ClusterServer {
   }
 
   private handleNewConnection(socket: net.Socket): void {
-    // Replace IP address for security - inline replacer function
+    // Hash IP address for security using hasher function
     const clientIP = socket.remoteAddress
-      ? socket.remoteAddress.replace(/\d/g, "*")
+      ? hasher(socket.remoteAddress)
       : "";
     const uid = crypto.randomUUID();
 
