@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  redis-cluster-server:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+      args:
+        PORT: 13000
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=server
+      - PORT=13000
+    ports:
+      - "13000:13000"
+    networks:
+      - redux-test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:13000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-cluster-client-1:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+      args:
+        PORT: 13000
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=client
+      - SERVER_HOST=redis-cluster-server
+      - SERVER_PORT=13000
+      - CLIENT_ID=client-1
+    depends_on:
+      redis-cluster-server:
+        condition: service_healthy
+    networks:
+      - redux-test-network
+
+  redis-cluster-client-2:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+      args:
+        PORT: 13000
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=client
+      - SERVER_HOST=redis-cluster-server
+      - SERVER_PORT=13000
+      - CLIENT_ID=client-2
+    depends_on:
+      redis-cluster-server:
+        condition: service_healthy
+    networks:
+      - redux-test-network
+
+  redis-cluster-client-3:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+      args:
+        PORT: 13000
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=client
+      - SERVER_HOST=redis-cluster-server
+      - SERVER_PORT=13000
+      - CLIENT_ID=client-3
+    depends_on:
+      redis-cluster-server:
+        condition: service_healthy
+    networks:
+      - redux-test-network
+
+  file-socket-test:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+      args:
+        PORT: 13000
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=file-socket
+    volumes:
+      - socket-volume:/tmp
+    networks:
+      - redux-test-network
+
+  ipc-test:
+    build:
+      context: ..
+      dockerfile: integration/Dockerfile.test
+      args:
+        PORT: 13000
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=ipc
+    networks:
+      - redux-test-network
+
+networks:
+  redux-test-network:
+    driver: bridge
+
+volumes:
+  socket-volume:

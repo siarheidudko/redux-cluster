@@ -6,6 +6,8 @@
  * LICENSE MIT
  */
 
+import { test, describe } from "node:test";
+import assert from "node:assert";
 import { createStore } from "../src/index";
 import { SerializationMode } from "../src/types";
 import { Action } from "redux";
@@ -24,25 +26,25 @@ describe("Redux-Cluster Core", () => {
     payload: { message: string };
   }
 
-  type TestAction = IncrementAction | SetMessageAction;
-
   const testReducer = (
     state: TestState = { counter: 0, message: "" },
     action: Action
   ): TestState => {
     switch (action.type) {
-      case "INCREMENT":
+      case "INCREMENT": {
         const incAction = action as IncrementAction;
         return {
           ...state,
           counter: state.counter + (incAction.payload?.amount || 1),
         };
-      case "SET_MESSAGE":
+      }
+      case "SET_MESSAGE": {
         const msgAction = action as SetMessageAction;
         return {
           ...state,
           message: msgAction.payload.message,
         };
+      }
       default:
         return state;
     }
@@ -51,12 +53,13 @@ describe("Redux-Cluster Core", () => {
   describe("Store Creation", () => {
     test("should create store with initial state", () => {
       const store = createStore(testReducer);
-      expect(store.getState()).toEqual({ counter: 0, message: "" });
+      assert.deepEqual(store.getState(), { counter: 0, message: "" });
     });
 
     test("should create store with JSON serialization mode by default", () => {
       const store = createStore(testReducer);
-      expect((store as any).config?.serializationMode).toBe(
+      assert.equal(
+        (store as any).config?.serializationMode,
         SerializationMode.JSON
       );
     });
@@ -65,47 +68,51 @@ describe("Redux-Cluster Core", () => {
       const store = createStore(testReducer, {
         serializationMode: SerializationMode.PROTOOBJECT,
       });
-      expect((store as any).config?.serializationMode).toBe(
+      assert.equal(
+        (store as any).config?.serializationMode,
         SerializationMode.PROTOOBJECT
       );
     });
   });
 
   describe("Basic Redux Functionality", () => {
-    let store: ReturnType<typeof createStore<TestState, TestAction>>;
-
-    beforeEach(() => {
-      store = createStore<TestState, TestAction>(testReducer);
-    });
-
     test("should dispatch actions and update state", () => {
+      const store = createStore(testReducer);
+
       store.dispatch({ type: "INCREMENT" } as IncrementAction);
-      expect(store.getState().counter).toBe(1);
+      assert.equal(store.getState().counter, 1);
 
       store.dispatch({
         type: "INCREMENT",
         payload: { amount: 5 },
       } as IncrementAction);
-      expect(store.getState().counter).toBe(6);
+      assert.equal(store.getState().counter, 6);
     });
 
     test("should handle multiple action types", () => {
+      const store = createStore(testReducer);
+
       store.dispatch({
         type: "SET_MESSAGE",
         payload: { message: "Hello World" },
       } as SetMessageAction);
-      expect(store.getState().message).toBe("Hello World");
+      assert.equal(store.getState().message, "Hello World");
 
       store.dispatch({
         type: "INCREMENT",
         payload: { amount: 10 },
       } as IncrementAction);
-      expect(store.getState()).toEqual({ counter: 10, message: "Hello World" });
+      assert.deepEqual(store.getState(), {
+        counter: 10,
+        message: "Hello World",
+      });
     });
 
-    test("should support subscriptions", (done) => {
+    test("should support subscriptions", (t, done) => {
+      const store = createStore(testReducer);
+
       const unsubscribe = store.subscribe(() => {
-        expect(store.getState().counter).toBe(1);
+        assert.equal(store.getState().counter, 1);
         unsubscribe();
         done();
       });
@@ -114,6 +121,7 @@ describe("Redux-Cluster Core", () => {
     });
 
     test("should support multiple subscriptions", () => {
+      const store = createStore(testReducer);
       let callCount1 = 0;
       let callCount2 = 0;
 
@@ -123,8 +131,8 @@ describe("Redux-Cluster Core", () => {
       store.dispatch({ type: "INCREMENT" } as IncrementAction);
       store.dispatch({ type: "INCREMENT" } as IncrementAction);
 
-      expect(callCount1).toBe(2);
-      expect(callCount2).toBe(2);
+      assert.equal(callCount1, 2);
+      assert.equal(callCount2, 2);
 
       unsubscribe1();
       unsubscribe2();
@@ -132,36 +140,36 @@ describe("Redux-Cluster Core", () => {
   });
 
   describe("Error Handling", () => {
-    let store: ReturnType<typeof createStore<TestState, TestAction>>;
-
-    beforeEach(() => {
-      store = createStore<TestState, TestAction>(testReducer);
-    });
-
     test("should throw error for reserved action types", () => {
-      expect(() => {
+      const store = createStore(testReducer);
+
+      assert.throws(() => {
         store.dispatch({ type: "REDUX_CLUSTER_SYNC" } as any);
-      }).toThrow();
+      });
     });
 
     test("should handle null/undefined actions gracefully", () => {
-      expect(() => {
-        store.dispatch(null as any);
-      }).toThrow();
+      const store = createStore(testReducer);
 
-      expect(() => {
+      assert.throws(() => {
+        store.dispatch(null as any);
+      });
+
+      assert.throws(() => {
         store.dispatch(undefined as any);
-      }).toThrow();
+      });
     });
 
     test("should handle malformed actions", () => {
-      expect(() => {
-        store.dispatch({ type: undefined } as any);
-      }).toThrow();
+      const store = createStore(testReducer);
 
-      expect(() => {
+      assert.throws(() => {
+        store.dispatch({ type: undefined } as any);
+      });
+
+      assert.throws(() => {
         store.dispatch({} as any);
-      }).toThrow();
+      });
     });
   });
 
@@ -169,18 +177,18 @@ describe("Redux-Cluster Core", () => {
     test("should support action mode", () => {
       const store = createStore(testReducer);
       store.mode = "action";
-      expect(store.mode).toBe("action");
+      assert.equal(store.mode, "action");
     });
 
     test("should support snapshot mode", () => {
       const store = createStore(testReducer);
       store.mode = "snapshot";
-      expect(store.mode).toBe("snapshot");
+      assert.equal(store.mode, "snapshot");
     });
 
-    test("should default to snapshot mode", () => {
+    test("should default to action mode", () => {
       const store = createStore(testReducer);
-      expect(store.mode).toBe("snapshot");
+      assert.equal(store.mode, "action");
     });
   });
 
@@ -191,7 +199,7 @@ describe("Redux-Cluster Core", () => {
         type: "SET_MESSAGE",
         payload: { message: "JSON test" },
       } as SetMessageAction);
-      expect(store.getState().message).toBe("JSON test");
+      assert.equal(store.getState().message, "JSON test");
     });
 
     test("should work with ProtoObject mode when available", () => {
@@ -202,16 +210,15 @@ describe("Redux-Cluster Core", () => {
         type: "SET_MESSAGE",
         payload: { message: "ProtoObject test" },
       } as SetMessageAction);
-      expect(store.getState().message).toBe("ProtoObject test");
+      assert.equal(store.getState().message, "ProtoObject test");
     });
 
     test("should fallback to JSON when ProtoObject is not available", () => {
-      // This test assumes ProtoObject might not be available in test environment
       const store = createStore(testReducer, {
         serializationMode: SerializationMode.PROTOOBJECT,
       });
       store.dispatch({ type: "INCREMENT" } as IncrementAction);
-      expect(store.getState().counter).toBe(1);
+      assert.equal(store.getState().counter, 1);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Store, Reducer, Action } from "redux";
+import { Store, Action } from "redux";
 
 // Serialization modes
 export enum SerializationMode {
@@ -12,6 +12,22 @@ export interface ReduxClusterConfig {
   serializationMode?: SerializationMode;
   // Whether to enable debug logging
   debug?: boolean;
+  // Synchronization mode
+  mode?: SyncMode;
+  // Communication protocol
+  syncMode?: "ipc" | "tcp";
+  // Cluster role
+  role?: Role[];
+  // Server settings (for TCP mode)
+  server?: ServerSettings;
+  // Client settings (for TCP mode)
+  client?: ClientSettings;
+  // Backup settings
+  backup?: BackupSettings;
+  // Error handler
+  stderr?: ErrorHandler;
+  // Resync interval in ms
+  resync?: number;
 }
 
 // Type for ProtoObject-based state (when protoobject is available)

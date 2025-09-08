@@ -2,45 +2,53 @@ import * as crypto from "crypto";
 import { Transform } from "stream";
 import { SerializationMode } from "../types";
 
-// Import ObjectStream for proper pipeline
-let ObjectStreamModule: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  ObjectStreamModule = require("@sergdudko/objectstream");
-} catch (e) {
-  // ObjectStream is optional
+// Import ObjectStream components - optional dependency
+let Stringifer: any = null;
+let Parser: any = null;
+
+// Initialize ObjectStream if available
+async function initializeObjectStream() {
+  try {
+    const objectStreamModule = await import("@sergdudko/objectstream");
+    Stringifer = objectStreamModule.Stringifer;
+    Parser = objectStreamModule.Parser;
+  } catch {
+    // ObjectStream is optional
+  }
 }
+
+// Initialize once
+initializeObjectStream();
 
 // ProtoObject type definition (for proper TypeScript support)
 type ProtoObjectClass = new (data: any) => any;
-interface ProtoObjectInstance {
-  constructor: ProtoObjectClass;
-  [key: string]: any;
+
+// Import ProtoObject - optional dependency
+let protoObjectConstructor: any = null;
+
+// Initialize ProtoObject if available
+async function initializeProtoObject() {
+  try {
+    const protoObjectModule = await import("protoobject");
+    protoObjectConstructor = protoObjectModule.ProtoObject || 
+                            protoObjectModule.default || 
+                            protoObjectModule;
+  } catch {
+    // ProtoObject is optional
+  }
 }
+
+// Initialize once
+initializeProtoObject();
 
 // Check if ProtoObject is available
 function isProtoObjectAvailable(): boolean {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require("protoobject") !== undefined;
-  } catch {
-    return false;
-  }
+  return protoObjectConstructor !== null;
 }
 
 // Get ProtoObject class (proper TypeScript way)
 function getProtoObjectClass(): ProtoObjectClass | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const protoObjectModule = require("protoobject");
-    return (
-      protoObjectModule.ProtoObject ||
-      protoObjectModule.default ||
-      protoObjectModule
-    );
-  } catch {
-    return null;
-  }
+  return protoObjectConstructor;
 }
 
 // Generate hash for reducer names
@@ -97,7 +105,7 @@ export function deepClone(obj: any): any {
 export function universalClone(
   obj: any,
   mode: SerializationMode,
-  classRegistry?: Map<string, any>
+  _classRegistry?: Map<string, any>
 ): any {
   if (mode === SerializationMode.PROTOOBJECT && isProtoObjectAvailable()) {
     return protoObjectClone(obj);
@@ -265,16 +273,16 @@ export function createClassRegistry(): Map<string, any> {
 
 // Create ObjectStream Parser for JSON parsing (Buffer -> Object)
 export function createObjectStreamParser(): Transform | null {
-  if (ObjectStreamModule && ObjectStreamModule.Parser) {
-    return new ObjectStreamModule.Parser();
+  if (Parser) {
+    return new Parser();
   }
   return null;
 }
 
 // Create ObjectStream Stringifier for JSON serialization (Object -> Buffer)
 export function createObjectStreamStringifier(): Transform | null {
-  if (ObjectStreamModule && ObjectStreamModule.Stringifer) {
-    return new ObjectStreamModule.Stringifer();
+  if (Stringifer) {
+    return new Stringifer();
   }
   return null;
 }

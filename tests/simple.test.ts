@@ -2,6 +2,8 @@
  * Simple integration test without cluster
  */
 
+import { test } from "node:test";
+import assert from "node:assert";
 import { createStore } from "../src/index";
 import { SerializationMode } from "../src/types";
 import { Action } from "redux";
@@ -10,7 +12,9 @@ interface TestState {
   counter: number;
 }
 
-interface IncrementAction extends Action<"INCREMENT"> {}
+interface IncrementAction extends Action<"INCREMENT"> {
+  type: "INCREMENT";
+}
 
 const testReducer = (
   state: TestState = { counter: 0 },
@@ -24,51 +28,71 @@ const testReducer = (
   }
 };
 
-console.log("🧪 Running simple integration test...");
+test("JSON mode basic functionality", () => {
+  const jsonStore = createStore(testReducer);
 
-// Test 1: JSON mode
-console.log("\n1️⃣ Testing JSON mode...");
-const jsonStore = createStore(testReducer);
-console.log("Initial state:", jsonStore.getState());
-jsonStore.dispatch({ type: "INCREMENT" } as IncrementAction);
-console.log("After increment:", jsonStore.getState());
-console.log("✅ JSON mode test passed");
+  assert.deepEqual(
+    jsonStore.getState(),
+    { counter: 0 },
+    "Initial state should be counter: 0"
+  );
 
-// Test 2: ProtoObject mode
-console.log("\n2️⃣ Testing ProtoObject mode...");
-const protoStore = createStore(testReducer, {
-  serializationMode: SerializationMode.PROTOOBJECT,
+  jsonStore.dispatch({ type: "INCREMENT" } as IncrementAction);
+  assert.deepEqual(
+    jsonStore.getState(),
+    { counter: 1 },
+    "After increment should be counter: 1"
+  );
 });
-console.log("Initial state:", protoStore.getState());
-protoStore.dispatch({ type: "INCREMENT" } as IncrementAction);
-console.log("After increment:", protoStore.getState());
-console.log("✅ ProtoObject mode test passed");
 
-// Test 3: Error handling
-console.log("\n3️⃣ Testing error handling...");
-try {
-  jsonStore.dispatch({ type: "REDUX_CLUSTER_SYNC" } as any);
-  console.log("❌ Should have thrown error");
-} catch (e) {
-  console.log("✅ Correctly rejected reserved action type");
-}
+test("ProtoObject mode basic functionality", () => {
+  const protoStore = createStore(testReducer, {
+    serializationMode: SerializationMode.PROTOOBJECT,
+  });
 
-// Test 4: Subscription
-console.log("\n4️⃣ Testing subscriptions...");
-let callCount = 0;
-const unsubscribe = jsonStore.subscribe(() => {
-  callCount++;
+  assert.deepEqual(
+    protoStore.getState(),
+    { counter: 0 },
+    "Initial state should be counter: 0"
+  );
+
+  protoStore.dispatch({ type: "INCREMENT" } as IncrementAction);
+  assert.deepEqual(
+    protoStore.getState(),
+    { counter: 1 },
+    "After increment should be counter: 1"
+  );
 });
-jsonStore.dispatch({ type: "INCREMENT" } as IncrementAction);
-unsubscribe();
-jsonStore.dispatch({ type: "INCREMENT" } as IncrementAction);
-console.log(`Subscription called ${callCount} times (expected: 1)`);
-console.log(
-  callCount === 1
-    ? "✅ Subscription test passed"
-    : "❌ Subscription test failed"
-);
 
-console.log("\n🎉 All simple integration tests completed!");
-console.log("Final JSON store state:", jsonStore.getState());
-console.log("Final ProtoObject store state:", protoStore.getState());
+test("Error handling for reserved action type", () => {
+  const jsonStore = createStore(testReducer);
+
+  assert.throws(
+    () => {
+      jsonStore.dispatch({ type: "REDUX_CLUSTER_SYNC" } as any);
+    },
+    /Please don't use REDUX_CLUSTER_SYNC action type!/,
+    "Should throw error for reserved action type"
+  );
+});
+
+test("Subscription functionality", () => {
+  const jsonStore = createStore(testReducer);
+  let callCount = 0;
+
+  const unsubscribe = jsonStore.subscribe(() => {
+    callCount++;
+  });
+
+  jsonStore.dispatch({ type: "INCREMENT" } as IncrementAction);
+  assert.equal(callCount, 1, "Subscription should be called once");
+
+  unsubscribe();
+
+  jsonStore.dispatch({ type: "INCREMENT" } as IncrementAction);
+  assert.equal(
+    callCount,
+    1,
+    "Subscription should not be called after unsubscribe"
+  );
+});

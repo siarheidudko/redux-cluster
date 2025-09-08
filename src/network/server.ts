@@ -244,7 +244,7 @@ export class ClusterServer {
         try {
           const data = JSON.parse(chunk.toString());
           this.push(data);
-        } catch (err) {
+        } catch {
           // Invalid JSON, ignore
         }
         callback();

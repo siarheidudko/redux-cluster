@@ -1,5 +1,7 @@
 import { createStore, Store, Reducer, Action } from "redux";
 import cluster from "cluster";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
 import {
   hasher,
   universalClone,
@@ -68,6 +70,12 @@ export class ReduxCluster<S = any, A extends Action = Action>
       ...config,
     };
 
+    // Apply configuration to instance properties
+    if (config.mode) this.mode = config.mode;
+    if (config.role) this.role.push(...config.role);
+    if (config.stderr) this.stderr = config.stderr;
+    if (config.resync) this.resync = config.resync;
+
     // Initialize class registry only if ProtoObject mode is enabled
     if (this.config.serializationMode === SerializationMode.PROTOOBJECT) {
       this.classRegistry = createClassRegistry();
@@ -75,17 +83,28 @@ export class ReduxCluster<S = any, A extends Action = Action>
 
     // Load package info
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const packageJson = require("../../package.json");
+      let packagePath: string;
+      try {
+        // Try CommonJS approach first (__dirname available)
+        packagePath = join(__dirname, '../../package.json');
+      } catch {
+        // Fallback - use relative path from process.cwd()
+        packagePath = join(process.cwd(), 'package.json');
+      }
+      
+      const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
       this.version = packageJson.version;
       this.homepage = packageJson.homepage;
     } catch {
-      this.version = "1.0.0";
-      this.homepage = "";
+      this.version = "2.0.0";
+      this.homepage = "https://github.com/siarheidudko/redux-cluster";
     }
 
-    // Validate reducer uniqueness
-    if (typeof reducers[reducer.name] !== "undefined") {
+    // Validate reducer uniqueness (only if different hash)
+    if (
+      typeof reducers[reducer.name] !== "undefined" &&
+      reducers[reducer.name] !== this.RCHash
+    ) {
       throw new Error("Please don't use a reducer with the same name!");
     }
     reducers[reducer.name] = this.RCHash;
@@ -115,22 +134,41 @@ export class ReduxCluster<S = any, A extends Action = Action>
     this.initializeClusterRole();
   }
 
+  // Internal method for sync actions
+  private internalSync(payload: S): void {
+    this.store.dispatch({
+      type: MessageType.SYNC,
+      payload,
+      _internal: true,
+    } as any);
+  }
+
+  // Expose internal sync for backup purposes
+  public _internalSync(payload: S): void {
+    this.internalSync(payload);
+  }
+
   private createNewReducer(): Reducer<S, A> {
     return (state = this.defaultState, action): S => {
+      // Handle sync action (internal use only)
+      if (action.type === MessageType.SYNC) {
+        // Check if this is an internal sync call
+        const syncAction = action as any;
+        if (syncAction._internal) {
+          return universalClone(
+            syncAction.payload,
+            this.config.serializationMode!,
+            this.classRegistry
+          );
+        } else {
+          throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
+        }
+      }
+
       // Handle sync mode
       if (this.mode === "action") {
         this.updateCounter();
         this.sendActionsToNodes(action);
-      }
-
-      // Handle sync action
-      if (action.type === MessageType.SYNC) {
-        const syncAction = action as any;
-        return universalClone(
-          syncAction.payload,
-          this.config.serializationMode!,
-          this.classRegistry
-        );
       }
 
       return this.altReducer(state, action);
@@ -202,9 +240,9 @@ export class ReduxCluster<S = any, A extends Action = Action>
     });
 
     // Listen for messages from workers
-    cluster.on("message", (worker: any, message: any, handle: any) => {
+    cluster.on("message", (worker: any, message: any, _handle: any) => {
       if (arguments.length === 2) {
-        handle = message;
+        _handle = message;
         message = worker;
         worker = undefined;
       }
@@ -264,7 +302,7 @@ export class ReduxCluster<S = any, A extends Action = Action>
                 this.config.serializationMode!,
                 this.classRegistry
               )._action;
-            } catch (e) {
+            } catch {
               // Fallback to regular action
               action = message._action;
             }
@@ -316,7 +354,7 @@ export class ReduxCluster<S = any, A extends Action = Action>
             this.config.serializationMode!,
             this.classRegistry
           );
-        } catch (e) {
+        } catch {
           // Fallback to regular data if deserialization fails
           processedData = data;
         }

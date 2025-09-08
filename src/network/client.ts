@@ -4,12 +4,7 @@ import * as path from "path";
 import * as zlib from "zlib";
 import * as stream from "stream";
 
-import {
-  ClientSettings,
-  ReduxClusterStore,
-  ClusterMessage,
-  MessageType,
-} from "../types";
+import { ReduxClusterStore, ClientSettings, MessageType } from "../types";
 import { hasher } from "../utils/crypto";
 
 export class ClusterClient {
@@ -167,7 +162,7 @@ export class ClusterClient {
         try {
           const data = JSON.parse(chunk.toString());
           this.push(data);
-        } catch (err) {
+        } catch {
           // Invalid JSON, ignore
         }
         callback();

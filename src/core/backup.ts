@@ -45,19 +45,24 @@ export class BackupManager<S = any> {
 
           const state = JSON.parse(content);
 
-          // Restore state
-          const action = {
-            type: MessageType.SYNC,
-            payload: state,
-          };
-
+          // Restore state using internal method
           if (
-            "dispatchNEW" in this.store &&
-            typeof (this.store as any).dispatchNEW === "function"
+            "_internalSync" in this.store &&
+            typeof (this.store as any)._internalSync === "function"
           ) {
-            (this.store as any).dispatchNEW(action);
+            (this.store as any)._internalSync(state);
           } else {
-            this.store.dispatch(action as any);
+            // Fallback: use dispatchNEW if available, otherwise skip restore
+            if (
+              "dispatchNEW" in this.store &&
+              typeof (this.store as any).dispatchNEW === "function"
+            ) {
+              (this.store as any).dispatchNEW({
+                type: MessageType.SYNC,
+                payload: state,
+                _internal: true,
+              });
+            }
           }
 
           setTimeout(() => resolve(), 500);

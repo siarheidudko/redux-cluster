@@ -1,51 +1,54 @@
+import { test } from "node:test";
+import assert from "node:assert";
 import { createStore } from "../src/index";
 
-describe("ReduxCluster", () => {
-  const testReducer = (state = { counter: 0 }, action: any) => {
-    switch (action.type) {
-      case "INCREMENT":
-        return { counter: state.counter + 1 };
-      case "DECREMENT":
-        return { counter: state.counter - 1 };
-      default:
-        return state;
-    }
-  };
+const testReducer = (state = { counter: 0 }, action: any) => {
+  switch (action.type) {
+    case "INCREMENT":
+      return { counter: state.counter + 1 };
+    case "DECREMENT":
+      return { counter: state.counter - 1 };
+    default:
+      return state;
+  }
+};
 
-  it("should create a store with default state", () => {
-    const store = createStore(testReducer);
-    expect(store.getState()).toEqual({ counter: 0 });
-  });
+test("should create a store with default state", () => {
+  const store = createStore(testReducer);
+  assert.deepStrictEqual(store.getState(), { counter: 0 });
+});
 
-  it("should handle actions", () => {
-    const store = createStore(testReducer);
-    store.dispatch({ type: "INCREMENT" });
-    expect(store.getState()).toEqual({ counter: 1 });
-  });
+test("should handle actions", () => {
+  const store = createStore(testReducer);
+  store.dispatch({ type: "INCREMENT" });
+  assert.deepStrictEqual(store.getState(), { counter: 1 });
+});
 
-  it("should have cluster properties", () => {
-    const store = createStore(testReducer);
-    expect(store.RCHash).toBeDefined();
-    expect(store.version).toBeDefined();
-    expect(store.role).toEqual(expect.arrayContaining(["master"]));
-    expect(typeof store.createServer).toBe("function");
-    expect(typeof store.createClient).toBe("function");
-  });
+test("should have cluster properties", () => {
+  const store = createStore(testReducer);
+  assert.ok(store.RCHash);
+  assert.ok(store.version);
+  assert.ok(store.role.includes("master"));
+  assert.strictEqual(typeof store.createServer, "function");
+  assert.strictEqual(typeof store.createClient, "function");
+});
 
-  it("should support different sync modes", () => {
-    const store = createStore(testReducer);
-    expect(store.mode).toBe("action");
+test("should support different sync modes", () => {
+  const store = createStore(testReducer);
+  assert.strictEqual(store.mode, "action");
 
-    store.mode = "snapshot";
-    expect(store.mode).toBe("snapshot");
-  });
+  store.mode = "snapshot";
+  assert.strictEqual(store.mode, "snapshot");
+});
 
-  it("should handle subscriptions", (done) => {
-    const store = createStore(testReducer);
+test("should handle subscriptions", async () => {
+  const store = createStore(testReducer);
+
+  return new Promise<void>((resolve) => {
     const unsubscribe = store.subscribe(() => {
-      expect(store.getState()).toEqual({ counter: 1 });
+      assert.deepStrictEqual(store.getState(), { counter: 1 });
       unsubscribe();
-      done();
+      resolve();
     });
 
     store.dispatch({ type: "INCREMENT" });

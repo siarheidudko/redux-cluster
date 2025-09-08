@@ -1,0 +1,32 @@
+FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Define build argument for port
+ARG PORT=3001
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy built files
+COPY dist/ ./dist/
+
+# Copy integration test files
+COPY integration/test-runner.cjs ./integration/
+COPY integration/scenarios/ ./integration/scenarios/
+
+# Create temp directory for file sockets
+RUN mkdir -p /tmp/redux-cluster
+
+# Set PORT environment variable from ARG
+ENV PORT=${PORT}
+
+EXPOSE ${PORT}
+
+CMD ["node", "integration/test-runner.cjs"]

@@ -1,30 +1,45 @@
 {
   "name": "redux-cluster",
   "version": "2.0.0",
+  "type": "module",
   "description": "TypeScript cluster module for Redux that synchronizes Redux stores across cluster processes via IPC and TCP sockets",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
   "files": [
-    "dist/**/*",
+    "dist/esm/**/*",
+    "dist/cjs/**/*",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:pkg",
+    "build:esm": "tsc",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:pkg": "./scripts/create-package-files.sh",
     "build:watch": "tsc --watch",
-    "clean": "rimraf dist",
+    "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:integration": "npm run build:tests && node dist/tests/integration.test.js",
-    "test:visual": "npm run build:tests && node dist/tests/visual.test.js",
-    "test:server": "npm run build:tests && node dist/tests/server.test.js",
-    "test:client": "npm run build:tests && node dist/tests/client.test.js",
-    "test:highload": "npm run build:tests && node dist/tests/highload.test.js",
-    "test:error": "npm run build:tests && node dist/tests/error.test.js",
-    "test:docker": "docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit",
-    "build:tests": "tsc -p tsconfig.tests.json",
+    "test": "npm run test:all",
+    "test:all": "node --test --import tsx tests/simple.test.ts tests/unit.test.ts tests/error.test.ts tests/redux-cluster.test.ts",
+    "test:unit": "node --test --import tsx tests/unit.test.ts",
+    "test:simple": "node --test --import tsx tests/simple.test.ts",
+    "test:cluster": "node --test --import tsx tests/cluster.test.ts",
+    "test:integration": "node --test --import tsx tests/integration.test.ts",
+    "test:error": "node --test --import tsx tests/error.test.ts",
+    "test:integration-full": "./integration/run-tests.sh",
     "lint": "eslint src/**/*.ts tests/**/*.ts",
     "lint:fix": "eslint src/**/*.ts tests/**/*.ts --fix",
     "example:basic": "node examples/basic.js",
@@ -58,18 +73,19 @@
     "redux": "^5.0.1"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.12",
     "@types/node": "^20.11.17",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "eslint": "^8.57.1",
-    "jest": "^29.7.0",
-    "rimraf": "^5.0.5",
-    "ts-jest": "^29.2.5",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "eslint": "^9.35.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.5.4"
   },
   "engines": {
     "node": ">=14.0.0"
+  },
+  "overrides": {
+    "debug": ">=4.3.7"
   },
   "publishConfig": {
     "access": "public"
