@@ -3,5 +3,9 @@
 node_modules
 img
 schemes
+src
+examples
+tests
 test1.backup
 test2.backup
+.DS_Store

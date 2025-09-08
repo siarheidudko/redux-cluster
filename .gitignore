@@ -3,3 +3,5 @@ node_modules
 .tmp.drivedownload
 test1.backup
 test2.backup
+dist
+.DS_Store
