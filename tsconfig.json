@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "lib": ["ES2022"],
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020", "dom"],
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist/esm",
@@ -20,8 +20,7 @@
     "noImplicitAny": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
-    "exactOptionalPropertyTypes": false
+    "noUncheckedIndexedAccess": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "examples", "tests"]

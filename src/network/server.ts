@@ -304,7 +304,7 @@ export class ClusterServer {
     switch (data._msg) {
       case MessageType.MSG_TO_MASTER:
         if (this.sockets[socket.uid]) {
-          if (data._action.type === MessageType.SYNC) {
+          if (data._action.type === MessageType.SYNC && !data._action._internal) {
             throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
           }
           // Apply action to server state
@@ -321,6 +321,7 @@ export class ClusterServer {
             _action: {
               type: MessageType.SYNC,
               payload: this.store.getState(),
+              _internal: true,
             },
           });
         }
@@ -436,6 +437,7 @@ export class ClusterServer {
       _action: {
         type: MessageType.SYNC,
         payload: this.store.getState(),
+        _internal: true,
       },
     };
 
