@@ -292,7 +292,10 @@ export class ReduxCluster<S = any, A extends Action = Action>
     if (message._hash === this.RCHash) {
       switch (message._msg) {
         case MessageType.MSG_TO_MASTER:
-          if (message._action.type === MessageType.SYNC && !message._action._internal) {
+          if (
+            message._action.type === MessageType.SYNC &&
+            !message._action._internal
+          ) {
             throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
           }
           // Deserialize action if it contains ProtoObject

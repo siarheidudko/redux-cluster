@@ -159,9 +159,7 @@ export class ClusterServer {
 
   private handleNewConnection(socket: net.Socket): void {
     // Hash IP address for security using hasher function
-    const clientIP = socket.remoteAddress
-      ? hasher(socket.remoteAddress)
-      : "";
+    const clientIP = socket.remoteAddress ? hasher(socket.remoteAddress) : "";
     const uid = crypto.randomUUID();
 
     const clusterSocket = socket as any as ClusterSocket;
@@ -304,7 +302,10 @@ export class ClusterServer {
     switch (data._msg) {
       case MessageType.MSG_TO_MASTER:
         if (this.sockets[socket.uid]) {
-          if (data._action.type === MessageType.SYNC && !data._action._internal) {
+          if (
+            data._action.type === MessageType.SYNC &&
+            !data._action._internal
+          ) {
             throw new Error("Please don't use REDUX_CLUSTER_SYNC action type!");
           }
           // Apply action to server state
