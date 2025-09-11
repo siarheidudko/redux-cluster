@@ -49,6 +49,7 @@
     "build:pkg": "./scripts/create-package-files.sh",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
+    "update": "eval \"$(node -e 'const t = require(`./package.json`);const ignore = require(`./ignoreUpdatesModules.json`);console.log(`npm i ${(Object.keys(t.dependencies || {}).filter((e)=>ignore.base.indexOf(e) === -1).map((e)=>(`${e}@latest`)).join(` `))} --save&&npm i ${(Object.keys(t.devDependencies || {}).filter((e)=>ignore.dev.indexOf(e) === -1).map((e)=>(`${e}@latest`)).join(` `))} --save-dev`);')\"",
     "prepublishOnly": "npm run clean && npm run build",
     "test": "npm run test:all",
     "test:all": "node --test --import tsx tests/unit.test.ts tests/error.test.ts tests/transport.test.ts",
@@ -96,8 +97,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
-    "@typescript-eslint/eslint-plugin": "^8.42.0",
-    "@typescript-eslint/parser": "^8.42.0",
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/parser": "^8.43.0",
     "eslint": "^9.35.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",

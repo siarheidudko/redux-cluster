@@ -1,0 +1,93 @@
+name: Autoupdate
+on:
+  schedule:
+    - cron: "0 1 * * *"
+concurrency:
+  group: "${{ github.workflow }} @ ${{ github.ref }}"
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      updated: ${{ steps.autoupdate.outputs.updated }}
+      version: ${{ steps.autoupdate.outputs.version }}
+    steps:
+      - name: Сheckout repo
+        id: checkout_repo
+        uses: actions/checkout@v4
+        with:
+          path: "tmp"
+          ref: "main"
+      - name: Autoupdate
+        id: autoupdate
+        uses: siarheidudko/autoupdater@v4
+        with:
+          author-email: "slavianich@gmail.com"
+          author-name: "Siarhei Dudko"
+          working-directory: ${{ github.workspace }}/tmp
+          ref: ${{ github.repository }}
+          branch: "main"
+          builds-and-checks: |
+            npm run lint
+            npm run build
+            npm run test
+          debug: "true"
+          ignore-packages: |
+            @types/node
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    timeout-minutes: 15
+    env:
+      NODE_VERSION: 22
+      VERSION: ${{ needs.update.outputs.version }}
+    needs: [update]
+    if: ${{ needs.update.outputs.updated == 'true' }}
+    steps:
+      - name: Сheckout repo
+        id: checkout_repo
+        uses: actions/checkout@v4
+        with:
+          ref: "main"
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        id: setup_node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org"
+      - name: Cache node modules
+        id: use_cache
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+      - name: Install dependencies
+        id: install_ci
+        run: npm ci
+      - name: Build package
+        id: build_package
+        run: npm run build
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.update.outputs.version }}
+          name: v${{ needs.update.outputs.version }}
+          body_path: ${{ github.workspace }}/README.md
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
+      - name: Publish package to NPM
+        id: npm_publish
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

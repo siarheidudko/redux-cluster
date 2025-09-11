@@ -1,15 +1,20 @@
 # Redux Cluster 2.0
 
-[![npm version](https://badge.fury.io/js/redux-cluster.svg)](https://badge.fury.io/js/redux-cluster)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
+[![npm](https://img.shields.io/npm/v/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+[![npm](https://img.shields.io/npm/dy/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+[![License](https://img.shields.io/npm/l/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+![GitHub last commit](https://img.shields.io/github/last-commit/siarheidudko/redux-cluster.svg)
+![GitHub release](https://img.shields.io/github/release/siarheidudko/redux-cluster.svg)
 
 A modern TypeScript library for synchronizing Redux stores across multiple processes and machines using TCP, Unix Domain Sockets, and IPC.
+
+> 🌐 **Need WebSocket support for browsers?** Check out [redux-cluster-ws](https://www.npmjs.com/package/redux-cluster-ws) - our companion package that extends Redux Cluster with WebSocket transport for browser clients.
 
 ## 🌟 Key Features
 
 - 🔄 **Real-time State Synchronization** across multiple processes/machines
 - 🌐 **Multiple Transport Options**: TCP, Unix Domain Sockets, IPC
+- 🌍 **WebSocket Support**: Available via [redux-cluster-ws](https://www.npmjs.com/package/redux-cluster-ws)
 - 📡 **Bidirectional Communication** - any node can dispatch actions
 - 🔒 **Built-in Security** with authentication and IP banning
 - ⚡ **High Performance** with optimized networking and compression
@@ -261,7 +266,33 @@ See the [examples/](./examples/) directory for complete working examples:
 - **[File Socket](./examples/file-socket/)** - Local IPC via Unix sockets
 - **[Basic Store](./examples/basic/)** - Local Redux store without networking
 
+> 🌐 **WebSocket Examples**: For browser integration examples with WebSocket transport, visit the [redux-cluster-ws examples](https://github.com/siarheidudko/redux-cluster-ws/tree/main/examples).
+
 Each example includes a README with step-by-step instructions.
+
+## 📦 Related Packages
+
+### redux-cluster-ws
+
+WebSocket transport layer for Redux Cluster, enabling browser client support:
+
+```bash
+npm install redux-cluster-ws
+```
+
+**Features:**
+
+- 🌐 WebSocket server and client
+- 🔗 Seamless integration with Redux Cluster
+- 🖥️ Browser support for web applications  
+- 📱 Real-time state synchronization to browsers
+- 🔒 Same security features as core package
+
+**Links:**
+
+- 📋 [NPM Package](https://www.npmjs.com/package/redux-cluster-ws)
+- 📖 [Documentation](https://github.com/siarheidudko/redux-cluster-ws)
+- 🎯 [Examples](https://github.com/siarheidudko/redux-cluster-ws/tree/main/examples)
 
 ## 🧪 Testing
 
@@ -299,7 +330,7 @@ Benchmark results:
 ## 🗺️ Roadmap
 
 - [ ] **Redis Transport** - Redis pub/sub for clustering
-- [ ] **WebSocket Transport** - Browser client support
+- [x] **WebSocket Transport** - Available in [redux-cluster-ws](https://www.npmjs.com/package/redux-cluster-ws)
 - [ ] **Conflict Resolution** - CRDT-based conflict resolution
 - [ ] **Persistence Layer** - Automatic state persistence
 - [ ] **Monitoring Dashboard** - Real-time cluster monitoring
