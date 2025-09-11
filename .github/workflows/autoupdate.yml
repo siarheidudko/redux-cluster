@@ -35,6 +35,7 @@ jobs:
           debug: "true"
           ignore-packages: |
             @types/node
+            typescript
   release:
     runs-on: ubuntu-latest
     permissions:
