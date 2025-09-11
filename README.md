@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
 [![npm](https://img.shields.io/npm/dy/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
-[![License](https://img.shields.io/npm/l/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
+[![NpmLicense](https://img.shields.io/npm/l/redux-cluster.svg)](https://www.npmjs.com/package/redux-cluster)
 ![GitHub last commit](https://img.shields.io/github/last-commit/siarheidudko/redux-cluster.svg)
 ![GitHub release](https://img.shields.io/github/release/siarheidudko/redux-cluster.svg)
 
@@ -338,7 +338,11 @@ Benchmark results:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](./CONTRIBUTING.md) and [Code of Conduct](./CODE_OF_CONDUCT.md).
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ### Development Setup
 
