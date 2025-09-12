@@ -6,6 +6,7 @@ examples/
 temp/
 img/
 schemes/
+.github/
 
 # Development configuration
 .gitignore
@@ -21,9 +22,7 @@ scripts/
 *.sh
 
 # Documentation (development)
-README-old.md
-CLEANUP_SUMMARY.md
-STATUS_REPORT.md
+CHANGELOG.md
 
 # Test files and artifacts
 test*.js
