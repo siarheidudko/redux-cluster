@@ -5,22 +5,23 @@
   "description": "TypeScript cluster module for Redux that synchronizes Redux stores across cluster processes via IPC and TCP sockets",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "types": "dist/esm/index.d.ts",
+  "types": "dist/types/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/index.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/esm/index.js"
       },
       "require": {
-        "types": "./dist/cjs/index.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/cjs/index.js"
       }
     }
   },
   "files": [
-    "dist/esm/**/*",
-    "dist/cjs/**/*",
+    "dist/esm/**/*.js",
+    "dist/cjs/**/*.js",
+    "dist/types/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -43,7 +44,8 @@
     }
   ],
   "scripts": {
-    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:pkg",
+    "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs && npm run build:pkg",
+    "build:types": "tsc -p tsconfig.types.json",
     "build:esm": "tsc",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:pkg": "./scripts/create-package-files.sh",
