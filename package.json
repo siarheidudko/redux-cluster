@@ -94,7 +94,7 @@
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
     "@sergdudko/objectstream": "^3.2.26",
-    "protoobject": "^2.0.4",
+    "protoobject": "^2.0.5",
     "redux": "^5.0.1"
   },
   "devDependencies": {
@@ -103,7 +103,7 @@
     "@typescript-eslint/parser": "^8.44.1",
     "eslint": "^9.36.0",
     "ts-node": "^10.9.2",
-    "tsx": "^4.20.5",
+    "tsx": "^4.20.6",
     "typescript": "^5.5.4"
   },
   "engines": {

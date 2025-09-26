@@ -1,3 +1,8 @@
+# 2.0.8 / 2025-09-26
+
+### :tada: Enhancements
+- Updated dependencies: protoobject, tsx
+
 # 2.0.7 / 2025-09-23
 
 ### :tada: Enhancements
