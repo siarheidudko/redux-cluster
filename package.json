@@ -93,8 +93,8 @@
   },
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
-    "@sergdudko/objectstream": "^4.0.1",
-    "protoobject": "^2.0.8",
+    "@sergdudko/objectstream": "^4.0.2",
+    "protoobject": "^2.0.9",
     "redux": "^5.0.1"
   },
   "devDependencies": {
