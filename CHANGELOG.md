@@ -1,3 +1,8 @@
+# 2.0.13 / 2025-10-04
+
+### :tada: Enhancements
+- Updated dependencies: eslint, protoobject
+
 # 2.0.12 / 2025-10-02
 
 ### :tada: Enhancements
