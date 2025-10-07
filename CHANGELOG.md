@@ -1,3 +1,8 @@
+# 2.0.15 / 2025-10-07
+
+### :tada: Enhancements
+- Updated dependencies: @typescript-eslint/eslint-plugin, @typescript-eslint/parser, protoobject
+
 # 2.0.14 / 2025-10-05
 
 ### :tada: Enhancements
