@@ -6,15 +6,15 @@ import {
   applyMiddleware,
   compose,
 } from "redux";
-import { ReduxCluster } from "./core/redux-cluster";
-import { ReduxClusterConfig } from "./types";
-import { hasher } from "./utils/crypto";
+import { ReduxCluster } from "./core/redux-cluster.js";
+import { ReduxClusterConfig } from "./types/index.js";
+import { hasher } from "./utils/crypto.js";
 
 // Re-export Redux functions and types
 export * from "redux";
 
 // Export our types
-export * from "./types";
+export * from "./types/index.js";
 
 // Export utility functions
 export const functions = {

@@ -8,7 +8,7 @@ import {
   universalSerialize,
   universalDeserialize,
   createClassRegistry,
-} from "../utils/crypto";
+} from "../utils/crypto.js";
 import {
   ReduxClusterStore,
   SyncMode,
@@ -21,10 +21,10 @@ import {
   ErrorHandler,
   ReduxClusterConfig,
   SerializationMode,
-} from "../types";
-import { ClusterServer } from "../network/server";
-import { ClusterClient } from "../network/client";
-import { BackupManager } from "./backup";
+} from "../types/index.js";
+import { ClusterServer } from "../network/server.js";
+import { ClusterClient } from "../network/client.js";
+import { BackupManager } from "./backup.js";
 
 // Global reducers registry to prevent name conflicts
 const reducers: Record<string, string> = {};

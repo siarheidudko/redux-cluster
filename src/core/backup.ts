@@ -1,6 +1,6 @@
 import * as fs from "fs";
-import { BackupSettings, ReduxClusterStore, MessageType } from "../types";
-import { encrypter, decrypter } from "../utils/crypto";
+import { BackupSettings, ReduxClusterStore, MessageType } from "../types/index.js";
+import { encrypter, decrypter } from "../utils/crypto.js";
 
 export class BackupManager<S = any> {
   private createBackupInstance?: BackupInstance<S>;

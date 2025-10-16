@@ -12,8 +12,8 @@ import {
   ClusterMessage,
   MessageType,
   ClusterSocket,
-} from "../types";
-import { hasher } from "../utils/crypto";
+} from "../types/index.js";
+import { hasher } from "../utils/crypto.js";
 
 export class ClusterServer {
   public readonly uid: string;

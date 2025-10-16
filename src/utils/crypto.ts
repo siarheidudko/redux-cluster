@@ -1,6 +1,6 @@
 import * as crypto from "crypto";
 import { Transform } from "stream";
-import { SerializationMode } from "../types";
+import { SerializationMode } from "../types/index.js";
 
 // Import ObjectStream components - optional dependency
 let Stringifer: any = null;

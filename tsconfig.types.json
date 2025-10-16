@@ -3,8 +3,9 @@
   "compilerOptions": {
     "emitDeclarationOnly": true,
     "declaration": true,
-    "declarationMap": false,
-    "outDir": "./dist/types"
+    "declarationMap": true,
+    "outDir": "./dist/types",
+    "moduleResolution": "Node16"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "examples", "tests"]

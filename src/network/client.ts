@@ -4,8 +4,8 @@ import * as path from "path";
 import * as zlib from "zlib";
 import * as stream from "stream";
 
-import { ReduxClusterStore, ClientSettings, MessageType } from "../types";
-import { hasher } from "../utils/crypto";
+import { ReduxClusterStore, ClientSettings, MessageType } from "../types/index.js";
+import { hasher } from "../utils/crypto.js";
 
 export class ClusterClient {
   public login?: string;
