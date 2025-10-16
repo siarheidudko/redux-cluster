@@ -19,8 +19,8 @@
     }
   },
   "files": [
-    "dist/esm/**/*.js",
-    "dist/cjs/**/*.js",
+    "dist/esm/**/*.js{,on}",
+    "dist/cjs/**/*.js{,on}",
     "dist/types/**/*",
     "README.md",
     "LICENSE"
