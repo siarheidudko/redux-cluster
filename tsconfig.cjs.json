@@ -6,7 +6,7 @@
     "outDir": "./dist/cjs",
     "moduleResolution": "node",
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
   },
   "exclude": [
     "tests/**/*",
