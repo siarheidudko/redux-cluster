@@ -1,3 +1,13 @@
+# 2.0.22 / 2025-10-18
+
+### :tada: Enhancements
+- Updated dependencies: eslint
+
+# 2.0.21 / 2025-10-17
+
+### :tada: Enhancements
+- Updated dependencies: @sergdudko/objectstream, protoobject
+
 # 2.0.18 / 2025-10-15
 
 ### :tada: Enhancements
