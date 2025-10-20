@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 permissions:
   id-token: write
-  contents: read
+  contents: write
 jobs:
   update:
     runs-on: ubuntu-latest
