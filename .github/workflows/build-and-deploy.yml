@@ -146,5 +146,3 @@ jobs:
       - name: Publish package to NPM
         if: ${{ !endsWith(env.RELEASE_VERSION, '-beta') }}
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
