@@ -1,6 +1,6 @@
 {
   "name": "redux-cluster",
-  "version": "2.0.22",
+  "version": "2.0.23",
   "type": "module",
   "description": "TypeScript cluster module for Redux that synchronizes Redux stores across cluster processes via IPC and TCP sockets",
   "main": "dist/cjs/index.js",
@@ -93,7 +93,7 @@
   },
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
-    "@sergdudko/objectstream": "^4.0.7",
+    "@sergdudko/objectstream": "^4.0.8",
     "protoobject": "^2.1.3",
     "redux": "^5.0.1"
   },
