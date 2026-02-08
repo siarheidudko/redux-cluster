@@ -57,13 +57,13 @@ export function hasher(input: string): string {
 }
 
 // Create cipher for encryption
-export function createCipher(key: string): crypto.Cipher {
+export function createCipher(key: string): crypto.Cipheriv {
   const iv = crypto.randomBytes(16);
   return crypto.createCipheriv("aes-256-ctr", Buffer.from(key), iv);
 }
 
 // Create decipher for decryption
-export function createDecipher(key: string, iv: Buffer): crypto.Decipher {
+export function createDecipher(key: string, iv: Buffer): crypto.Decipheriv {
   return crypto.createDecipheriv("aes-256-ctr", Buffer.from(key), iv);
 }
 
