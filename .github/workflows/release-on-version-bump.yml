@@ -1,8 +1,7 @@
 name: Release on version bump
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 concurrency:
   group: "${{ github.workflow }} @ ${{ github.ref }}"
   cancel-in-progress: false
@@ -13,6 +12,7 @@ env:
   RELEASE_WORKFLOW: build-and-deploy.yml
 jobs:
   release:
+    name: Release on version bump
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

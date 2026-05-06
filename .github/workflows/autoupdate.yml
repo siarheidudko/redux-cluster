@@ -16,8 +16,10 @@ env:
   AUTOUPDATE_BRANCH: chore/autoupdate-${{ github.run_id }}
 jobs:
   update:
+    name: Autoupdate dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
@@ -37,7 +39,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Autoupdate
+
+      - name: Run autoupdater
         id: autoupdate
         continue-on-error: true
         uses: siarheidudko/autoupdater@v6
@@ -82,7 +85,7 @@ jobs:
         run: |
           gh label create autoupdate --color "0e8a16" --description "Automated dependency update PRs" --force || true
           gh label create needs-claude --color "d4c5f9" --description "Needs Claude GitHub App to fix" --force || true
-      - name: Check for diff vs main on remote branch
+      - name: Detect diff vs main
         id: diff
         if: always()
         run: |
@@ -141,8 +144,8 @@ jobs:
               npm run build
               npm run test:all
 
-          See **Actions → Claude** for progress. The "PR checks" workflow will
-          re-run on each new commit to confirm a green state before merge.
+          Claude will leave a status comment on this PR when it finishes.
+          PR-checks will re-run on each new commit.
           EOF
           )
           PR_URL=$(gh pr create \
@@ -162,25 +165,13 @@ jobs:
         if: steps.pr_failure.outputs.pr_url != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ steps.pr_failure.outputs.pr_url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh workflow run claude.yml --ref main \
             -f branch="$AUTOUPDATE_BRANCH" \
+            -f pr_url="$PR_URL" \
             -f run_url="$RUN_URL"
-      - name: Post info comment on the failure PR
-        if: steps.pr_failure.outputs.pr_url != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ steps.pr_failure.outputs.pr_url }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          COMMENT=$(cat <<EOF
-          Claude has been dispatched to fix this PR. See [Actions → Claude](${{ github.server_url }}/${{ github.repository }}/actions/workflows/claude.yml) for progress.
-
-          Failing autoupdate run: $RUN_URL
-          EOF
-          )
-          gh pr comment "$PR_URL" --body "$COMMENT"
       - name: Add labels to PR
         if: steps.pr_success.outputs.pr_url != '' || steps.pr_failure.outputs.pr_url != ''
         env:
