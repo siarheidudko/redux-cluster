@@ -39,11 +39,10 @@ jobs:
       actions: read
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
           fetch-depth: 1
-
       - name: Prepare autoupdate-fix prompt
         if: github.event_name == 'workflow_dispatch'
         id: prep
@@ -80,7 +79,6 @@ jobs:
           EOF
             echo PROMPT_EOF
           } >> "$GITHUB_OUTPUT"
-
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
