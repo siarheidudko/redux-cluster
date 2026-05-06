@@ -14,6 +14,10 @@ on:
         description: "Branch Claude should operate on (used by autoupdate flow)"
         required: true
         type: string
+      pr_url:
+        description: "PR URL where Claude should post a status comment"
+        required: false
+        type: string
       run_url:
         description: "URL of the failing autoupdate run, included in the prompt for context"
         required: false
@@ -23,6 +27,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   claude:
+    name: Run Claude
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -48,15 +53,16 @@ jobs:
         id: prep
         env:
           BRANCH: ${{ github.event.inputs.branch }}
+          PR_URL: ${{ github.event.inputs.pr_url }}
           RUN_URL: ${{ github.event.inputs.run_url }}
         run: |
           {
             echo 'prompt<<PROMPT_EOF'
             cat <<EOF
           The dependency autoupdater failed on branch \`$BRANCH\` (run: $RUN_URL).
+          PR: $PR_URL
 
-          Push commits to this branch until ALL THREE of the following exit
-          with code 0 in your local working tree, observed via the Bash tool —
+          Run these commands and observe their exit codes via the Bash tool —
           not inferred:
 
               npm run lint
@@ -64,7 +70,7 @@ jobs:
               npm run test:all
 
           Hard rules:
-          - Run those three commands yourself before every push. Do not push
+          - Run those commands yourself before every push. Do not push
             if any of them is red.
           - If \`npm install\` or \`npm ci\` is needed, run it first with
             \`--no-audit --no-fund\` and confirm exit 0.
@@ -72,8 +78,24 @@ jobs:
             breaking-change adjustments, eslint-config tweaks for new rule
             defaults). Do NOT change product logic.
           - Do NOT bump the package version.
-          - When all three are green, push and stop. CI's \`PR checks\`
-            workflow will re-verify on the PR.
+          - When all commands are green, push commits with your fixes
+            (if any). \`pr-checks\` will re-run automatically on each push.
+
+          ## MANDATORY final step
+
+          When you are done — whether you pushed fixes or determined no
+          changes were needed — you MUST post a status comment on the PR.
+          Run the following with the Bash tool:
+
+              gh pr comment "$PR_URL" --body "<your status summary>"
+
+          The comment must state plainly:
+          - Which command(s) failed initially (or "all green on first run").
+          - What changes you made (or "no fix needed").
+          - Whether you pushed any commits, and the SHA(s) if so.
+
+          Do NOT exit without posting this comment. The maintainer relies
+          on it to know what happened without reading the action log.
 
           See CLAUDE.md in the repo root for the full project conventions.
           EOF
@@ -86,4 +108,4 @@ jobs:
           allowed_bots: "*"
           prompt: ${{ steps.prep.outputs.prompt }}
           claude_args: |
-            --allowedTools "Edit,Write,MultiEdit,Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(rm:*),Bash(mkdir:*),Bash(cat:*),Bash(ls:*),Bash(echo:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(diff:*),Bash(mv:*),Bash(cp:*),Bash(touch:*)"
+            --allowedTools "Edit,Write,MultiEdit,Bash(git:*),Bash(gh:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(rm:*),Bash(mkdir:*),Bash(cat:*),Bash(ls:*),Bash(echo:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(diff:*),Bash(mv:*),Bash(cp:*),Bash(touch:*)"
