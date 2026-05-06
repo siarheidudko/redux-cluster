@@ -23,6 +23,7 @@ scripts/
 
 # Documentation (development)
 CHANGELOG.md
+CLAUDE.md
 
 # Test files and artifacts
 test*.js
