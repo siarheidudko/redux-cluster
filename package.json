@@ -93,16 +93,16 @@
   },
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
-    "@sergdudko/objectstream": "^4.0.34",
-    "protoobject": "^2.1.37",
+    "@sergdudko/objectstream": "^4.0.36",
+    "protoobject": "^2.1.38",
     "redux": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.59.4",
-    "@typescript-eslint/parser": "^8.59.4",
-    "eslint": "^10.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "eslint": "^10.4.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
     "typescript": "^5.9.3"
