@@ -1,3 +1,8 @@
+# 2.0.91 / 2026-08-07
+
+### :tada: Enhancements
+- Updated dependencies: @sergdudko/objectstream, @typescript-eslint/eslint-plugin, @typescript-eslint/parser, eslint, protoobject, tsx
+
 # 2.0.90 / 2026-07-31
 
 ### :tada: Enhancements
