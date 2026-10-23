@@ -1,6 +1,6 @@
 {
   "name": "redux-cluster",
-  "version": "2.0.101",
+  "version": "2.0.102",
   "type": "module",
   "description": "TypeScript cluster module for Redux that synchronizes Redux stores across cluster processes via IPC and TCP sockets",
   "main": "dist/cjs/index.js",
@@ -93,15 +93,15 @@
   },
   "homepage": "https://github.com/siarheidudko/redux-cluster#readme",
   "dependencies": {
-    "@sergdudko/objectstream": "^4.0.54",
+    "@sergdudko/objectstream": "^4.0.55",
     "protoobject": "^2.1.56",
     "redux": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.71.2",
-    "@typescript-eslint/parser": "^8.71.2",
+    "@typescript-eslint/eslint-plugin": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.0",
     "eslint": "^10.13.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
